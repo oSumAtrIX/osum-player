@@ -1,0 +1,71 @@
+<!DOCTYPE html>
+<html lang="en">
+	<head>
+		<meta charset="UTF-8" />
+		<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+		<meta http-equiv="X-UA-Compatible" content="ie=edge" />
+		<title>osum!player</title>
+		<link rel="stylesheet" href="/styles/index.css" />
+	</head>
+	<body>
+		<div id="main">
+			<div id="search-main">
+				<div id="search-container">
+					<input id="search-input" type="text" />
+					<hr />
+					<ul id="search-results">
+						<!-- search-result-item -->
+					</ul>
+				</div>
+			</div>
+			<div id="player-main">
+				<div class="player-container">
+					<ul id="song-list">
+						<!-- song-item -->
+					</ul>
+				</div>
+				<div class="player-container">
+					<img id="image" alt="image" src="" />
+				</div>
+			</div>
+		</div>
+		<div id="popup">
+			<span id="popup-text"></span>
+		</div>
+		<div id="seekbar">
+			<div id="seekbar-progress"><!-- current progress --></div>
+			<div id="seekbar-knob">
+				<div id="seekbar-current-time">
+					<div id="seekbar-current-time-text"><!-- current time --></div>
+					<div id="seekbar-time-separator">/</div>
+					<div id="seekbar-current-song-duration-text">
+						<!-- song duration -->
+					</div>
+				</div>
+				<div id="seekbar-knob-circle"></div>
+			</div>
+		</div>
+	</body>
+	<template id="marker-template">
+		<div class="marker"></div>
+	</template>
+	<template id="song-item-template">
+		<li class="song-item" id>
+			<img class="song-image" alt="song-image" src />
+			<div class="song-body">
+				<span class="song-name"><!-- song name --></span>
+				<span class="song-artist"><!-- song artist --></span>
+			</div>
+			<span class="song-duration"><!-- song duration --></span>
+		</li>
+	</template>
+	<template id="search-result-template">
+		<li class="search-result-item" id>
+			<a class="search-result">
+				<span class="search-result-song-name"><!-- song name --></span>
+				<span class="search-result-song-artist"><!-- song artist --></span>
+			</a>
+		</li>
+	</template>
+	<script src="/scripts/index.js"></script>
+</html>
