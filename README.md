@@ -2,6 +2,8 @@
 
 A music player built in vanilla web technologies out of the need of a good music player.
 
+![image](https://user-images.githubusercontent.com/13122796/223134417-93990c05-060a-45d5-b750-53c2a907f8e6.png)
+
 ## Features
 
 - Fast & responsive
