@@ -460,7 +460,7 @@ class ApiManager {
 	}
 
 	static async request(endpoint, options) {
-		return await fetch(`/api${endpoint}`, options).json();
+		return (await fetch(`/api${endpoint}`, options).json();
 	}
 }
 
