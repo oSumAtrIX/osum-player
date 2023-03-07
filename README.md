@@ -16,7 +16,7 @@ A music player built in vanilla web technologies out of the need of a good music
 
 ## Keybinds
 
-- `CTRL+A`: Toggle autplay
+- `CTRL+A`: Toggle autoplay
 - `CTRL+M`: Add a marker
 - `CTRL+C`: Clear all marker
 - `CTRL+E`: Toggle animations off
