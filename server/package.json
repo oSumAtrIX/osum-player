@@ -1,0 +1,45 @@
+{
+	"name": "osum-player",
+	"version": "0.1.0",
+	"description": "A music player built in vanilla web technologies out of the need of a good music player",
+	"main": "index.js",
+	"scripts": {
+		"lint": "eslint --fix src",
+		"test": "mocha --exit",
+		"start": "node src/index.js",
+		"debug": "nodemon --inspect-brk src/index.js"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/oSumAtrIX/osum-player.git"
+	},
+	"author": "oSumAtrIX",
+	"license": "GPL-3.0-or-later",
+	"bugs": {
+		"url": "https://github.com/oSumAtrIX/osum-player/issues"
+	},
+	"type": "module",
+	"homepage": "https://osumatrix.me",
+	"dependencies": {
+		"@prisma/client": "^4.11.0",
+		"chokidar": "^3.5.3",
+		"cors": "^2.8.5",
+		"dotenv": "^16.0.3",
+		"express": "^4.18.2",
+		"hound": "^1.0.5",
+		"imagemin": "^8.0.1",
+		"imagemin-webp": "^8.0.0",
+		"music-metadata": "^8.1.3",
+		"parse-filepath": "^1.0.2"
+	},
+	"devDependencies": {
+		"eslint": "^8.35.0",
+		"eslint-config-standard": "^17.0.0",
+		"eslint-plugin-import": "^2.27.5",
+		"eslint-plugin-n": "^15.6.1",
+		"eslint-plugin-promise": "^6.1.1",
+		"morgan": "^1.10.0",
+		"prisma": "^4.11.0",
+		"supertest": "^6.3.1"
+	}
+}

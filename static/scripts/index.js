@@ -1,11 +1,11 @@
 const $ = (selector, target) => (target || document).querySelector(selector);
 
 class Song {
-	constructor(name, artist, image, url, id) {
-		this.name = name;
+	constructor(title, artist, image, file, id) {
+		this.title = title;
 		this.artist = artist;
-		this.image = image;
-		this.url = url;
+		this.image = image || "assets/placeholder.png";
+		this.file = file;
 		this.id = id;
 
 		this.marker = [];
@@ -43,8 +43,12 @@ class Song {
 		}
 	}
 
+	getFullImage() {
+		return this.image + "?full";
+	}
+
 	static fromJSON(json) {
-		return new Song(json.name, json.artist, json.image, json.url, json.id);
+		return new Song(json.title, json.artist, json.image, json.file, json.id);
 	}
 }
 
@@ -67,107 +71,6 @@ class PopupManager {
 		);
 	}
 }
-class AudioManager {
-	static {
-		this.audio = new Audio();
-		this.setVolume(localStorage.getItem("volume") || 50);
-
-		// update seekbar on audio events
-
-		this.audio.onloadedmetadata = () =>
-			SeekbarManager.setDuration(this.getDuration());
-
-		this.audio.ontimeupdate = () => {
-			if (this.audio.readyState > 0)
-				SeekbarManager.setProgress(this.getCurrentTime() / this.getDuration());
-		};
-
-		this.audio.onended = () => {
-			if (SongManager.isAutoplayEnabled()) SongManager.playNext();
-		};
-	}
-
-	/**
-	 * @param {Song} song The song to play.
-	 */
-	static setSong(song) {
-		this.audio.src = song.url;
-	}
-
-	static play() {
-		if (this.audio.src) this.audio.play();
-		else SongManager.playNext();
-	}
-
-	static getVolume() {
-		return Math.round(this.audio.volume * 100);
-	}
-
-	static addVolume(amount) {
-		this.setVolume(this.getVolume() + amount);
-	}
-
-	static setVolume(volume) {
-		// prevent illegal values
-		if (volume < 0) volume = 0;
-		else if (volume > 100) volume = 100;
-
-		localStorage.setItem("volume", volume);
-
-		// set volume
-
-		this.audio.volume = volume / 100;
-	}
-
-	static showVolumePopup() {
-		PopupManager.showPopup(this.getVolume() + "%");
-	}
-
-	static pause() {
-		this.audio.pause();
-	}
-
-	static isPaused() {
-		return this.audio.paused;
-	}
-
-	static toggle() {
-		if (this.isPaused()) {
-			this.play();
-
-			if (!SeekbarManager.isMouseOverSeekbar()) SeekbarManager.shrinkSeekbar();
-		} else {
-			this.pause();
-
-			SeekbarManager.enlargeSeekbar();
-		}
-	}
-
-	static getDuration() {
-		return this.audio.duration || 0;
-	}
-
-	static getCurrentTime() {
-		return this.audio.currentTime;
-	}
-
-	/**
-	 * @param {number} progress The progress in the range [0, 1].
-	 */
-	static setProgress(progress) {
-		this.audio.currentTime = this.getDuration() * progress;
-	}
-
-	static scrub(seconds) {
-		// prevent glitching sound by pausing and playing the audio after scrubbing stops
-		this.pause();
-
-		clearTimeout(this.scrubTimeout);
-		this.scrubTimeout = setTimeout(() => this.play(), 100);
-
-		this.audio.currentTime += seconds;
-	}
-}
 
 class SeekbarManager {
 	static {
@@ -185,7 +88,6 @@ class SeekbarManager {
 			this.currentTime
 		);
 		this.isMouseOverSeekbarProp = false;
-
 		this.markerHoverStyle = document.createElement("style");
 		this.markerHoverStyle.type = "text/css";
 		this.markerHoverStyle.innerHTML = `.marker {
@@ -201,10 +103,12 @@ class SeekbarManager {
 			if (e.timeStamp - this.lastSetProgressCall < 4) return;
 			this.lastSetProgressCall = e.timeStamp;
 
-			// get current mouse position in x axis of screen
+			AudioManager.playInteractionAudio(60);
 
 			const calculateProgress = (e) => e.clientX / this.seekbar.offsetWidth;
 			AudioManager.setProgress(calculateProgress(e));
+
+			PopupManager.showPopup(this.currentTimeText.innerText, 300);
 		};
 
 		let mouseDownOriginIsSeekbar = false;
@@ -229,20 +133,6 @@ class SeekbarManager {
 			if (!this.isMouseOverSeekbar()) this.shrinkSeekbar();
 
 			document.onmousemove = null;
-		};
-
-		this.seekbar.onwheel = (e) => {
-			let delta;
-
-			let currentVolume = AudioManager.getVolume();
-			if (e.deltaY < 0) {
-				delta = currentVolume < 5 ? 1 : 5;
-			} else {
-				delta = currentVolume <= 5 ? -1 : -5;
-			}
-
-			AudioManager.addVolume(delta, true);
-			AudioManager.showVolumePopup();
 		};
 
 		// hover effect
@@ -290,6 +180,10 @@ class SeekbarManager {
 		this.seekbar
 			.querySelectorAll(".marker")
 			.forEach((marker) => marker.remove());
+	}
+
+	static getSeekbar() {
+		return this.seekbar;
 	}
 
 	static deleteMarker() {
@@ -350,6 +244,7 @@ class SeekbarManager {
 class EventManager {
 	static {
 		document.onkeydown = (e) => {
+			if (e.code == "ShiftLeft") this.shift = true;
 			if (e.code == "ControlLeft") this.control = true;
 
 			if (!SearchManager.isActive()) {
@@ -357,10 +252,16 @@ class EventManager {
 
 				switch (e.code) {
 					case "ArrowLeft":
-						AudioManager.scrub(-5);
+						if (this.control) AudioManager.scrub(-20);
+						else if (this.shift) AudioManager.scrub(-1);
+						else AudioManager.scrub(-5);
+
 						return;
 					case "ArrowRight":
-						AudioManager.scrub(5);
+						if (this.control) AudioManager.scrub(20);
+						else if (this.shift) AudioManager.scrub(1);
+						else AudioManager.scrub(5);
+
 						return;
 					case "ArrowUp":
 						SongManager.playPrevious();
@@ -376,6 +277,13 @@ class EventManager {
 
 			if (this.control) {
 				switch (e.code) {
+					case "BracketRight":
+						AudioManager.changeVolume(true);
+						return;
+					case "Slash":
+						AudioManager.changeVolume(false);
+						return;
+
 					case "KeyE":
 						e.preventDefault();
 						AnimationManager.toggleAnimations();
@@ -403,9 +311,11 @@ class EventManager {
 			if (SearchManager.isActive()) {
 				switch (e.code) {
 					case "ArrowUp":
+						e.preventDefault();
 						SearchManager.selectPrevious();
 						return;
 					case "ArrowDown":
+						e.preventDefault();
 						SearchManager.selectNext();
 						return;
 					case "Enter":
@@ -427,6 +337,7 @@ class EventManager {
 		};
 
 		document.onkeyup = (e) => {
+			if (e.code == "ShiftLeft") this.shift = false;
 			if (e.code == "ControlLeft") this.control = false;
 		};
 
@@ -435,32 +346,90 @@ class EventManager {
 }
 
 class ApiManager {
-	static async querySongs(query) {
-		return await this.request(`/search?q=${encodeURIComponent(query)}`);
+	static {
+		this.apiVersion = 1;
+		this.endpoint = localStorage.getItem("endpoint") || "http://localhost:3000"; // TODO: add ability to configure in frontend
+
+		this.sendOption = (method = "POST") => ({
+			method,
+			headers: {
+				"Content-Type": "application/json",
+			},
+		});
 	}
 
-	static async getSongs(offset) {
-		const songs = [];
+	static setEndpoint(endpoint) {
+		this.endpoint = endpoint;
 
-		(await this.request(`/songs?offset=${offset}`)).forEach((song) => {
+		localStorage.setItem("endpoint", endpoint);
+	}
+
+	// TODO: implement frontend for this
+	static async reload() {
+		return await this.request("/songs/reload", sendOption());
+	}
+
+	// TODO: make use of limit and offset
+	static async querySongs(query, limit = 20, offset = 0) {
+		const songs = await this.request(
+			`/songs?q=${encodeURIComponent(query)}&limit=${limit}&offset=${offset}`
+		);
+
+		const ids = [];
+		for (const song of songs) ids.push(song.id);
+
+		return ids;
+	}
+
+	// TODO: implement frontend for this
+	static async watchForChanges(watch) {
+		return await this.request(
+			"/songs/watch" + watch ? "?watch" : "",
+			this.sendOption()
+		);
+	}
+
+	static async getSongs(ids) {
+		const json = await this.request(`/songs/multiple?ids=${ids.join(",")}`);
+
+		const songs = [];
+		for (const song of json) {
 			songs.push(Song.fromJSON(song));
-		});
+		}
 
 		return songs;
 	}
 
+	static async getSong(id) {
+		const json = await this.request(`/songs/${id}`);
+		return Song.fromJSON(json);
+	}
+
+	static async getSongIds(offset) {
+		const ids = [];
+
+		(await this.request(`/songs/offset/${offset}`)).forEach((song) => {
+			ids.push(song.id);
+		});
+
+		return ids;
+	}
+
+	// TODO: implement frontend for this
 	static async editSong(id, song) {
 		return await this.request(`/songs/${id}`, {
-			method: "PUT",
-			headers: {
-				"Content-Type": "application/json",
-			},
+			...this.sendOption("PATCH"),
 			body: JSON.stringify(song),
 		});
 	}
 
-	static async request(endpoint, options) {
-		return (await fetch(`/api${endpoint}`, options).json();
+	static async request(api, options) {
+		const response = await fetch(
+			`${this.endpoint}/api/v${this.apiVersion}${api}`,
+			options
+		);
+
+		return response.json();
 	}
 }
 
@@ -476,6 +445,8 @@ class SongManager {
 
 		this.autoplay = localStorage.getItem("autoplay") || false;
 
+		this.lastOffsetId = 0;
+
 		// handle song playback
 		this.songList.onclick = (e) => {
 			if (e.target.classList.contains("song-item")) {
@@ -483,7 +454,27 @@ class SongManager {
 			}
 		};
 
-		this.getSongs(0).then(this.addSongsToList);
+		this.songList.onscroll = (e) => {
+			clearTimeout(this.scrollTimeout);
+			this.scrollTimeout = setTimeout(() => {
+				if (
+					e.target.scrollTop + e.target.clientHeight >=
+					e.target.scrollHeight -
+						(e.target.scrollHeight - e.target.scrollTop) / 2
+				)
+					SongManager.getNewSongs();
+			}, 5);
+		};
+
+		this.image.onclick = () => {
+			AudioManager.toggle();
+		};
+
+		this.getNewSongs();
+	}
+
+	static getImage() {
+		return this.image;
 	}
 
 	static isAutoplayEnabled() {
@@ -501,54 +492,59 @@ class SongManager {
 		);
 	}
 
-	static async getSongs(offset) {
-		let existingSongs = this.songs[offset];
-		if (existingSongs) return existingSongs;
+	static async getSongs(ids) {
+		const songs = [];
 
-		const songs = await ApiManager.getSongs(offset);
-		this.songs[offset] = songs;
+		// record ids of songs not in cache
+		let missingSongs = [];
 
+		// add songs from cache
+		for (const id of ids) {
+			if (this.songs.has(id)) songs.push(this.songs.get(id));
+			else missingSongs.push(id);
+		}
+
+		if (missingSongs.length == 0) return songs;
+
+		const newSongs = await ApiManager.getSongs(missingSongs);
+
+		this.addSongsToList(newSongs);
+
+		// add newly found songs to cache
+		for (const song of newSongs) {
+			this.songs.set(song.id, song);
+
+			// merge with songs from cache
+			songs.push(song);
+		}
+
+		return songs;
+	}
+
+	static async getNewSongs() {
+		const ids = await ApiManager.getSongIds(this.lastOffsetId);
+
+		// fetch new songs starting at the last offset id
+		this.lastOffsetId = ids[ids.length - 1] + 1;
+
+		const songs = await this.getSongs(ids);
 		return songs;
 	}
 
 	static async querySongs(query) {
-		const queryFilter = (song) =>
-			song.name.includes(query) || song.artist.includes(query);
+		const ids = await ApiManager.querySongs(query);
 
-		const existingSongs = this.filter(queryFilter);
-		if (existingSongs.length > 0) return existingSongs;
+		if (ids.length == 0) return [];
 
-		const results = [];
+		const newSongs = await this.getSongs(ids);
 
-		for (const offset in await ApiManager.querySongs(query)) {
-			const songs = await this.getSongs(offset);
-
-			this.addSongsToList(songs);
-
-			results.push(songs.filter(queryFilter));
-		}
-
-		return results;
-	}
-
-	static filter(filter) {
-		const songs = [];
-		for (const offset in this.songs)
-			for (const song of this.songs[offset]) if (filter(song)) songs.push(song);
-
-		return songs;
+		return newSongs;
 	}
 
 	static playSong(id) {
-		for (const offset in this.songs) {
-			const song = this.songs[offset].find((song) => song.id == id);
-			if (song) {
-				SongManager.currentSong = song;
-				break;
-			}
-		}
+		SongManager.currentSong = this.songs.get(parseInt(id));
 
-		this.image.src = this.currentSong.image;
+		this.image.src = this.currentSong.getFullImage();
 
 		AudioManager.setSong(this.currentSong);
 		AudioManager.play();
@@ -574,7 +570,15 @@ class SongManager {
 			this.currentSongItem.classList.remove("song-item-active");
 
 		this.currentSongItem = songItem;
-		if (songItem) this.currentSongItem.classList.add("song-item-active");
+		if (songItem) {
+			this.currentSongItem.classList.add("song-item-active");
+			this.currentSongItem.scrollIntoViewIfNeeded(true);
+		}
+	}
+
+	static setActiveById(id) {
+		const songItem = $("#" + CSS.escape(id), this.songList);
+		this.setActive(songItem);
 	}
 
 	static playNext() {
@@ -608,7 +612,7 @@ class SongManager {
 
 		songItem.id = song.id;
 
-		$(".song-name", songItem).innerText = song.name;
+		$(".song-title", songItem).innerText = song.title;
 		$(".song-artist", songItem).innerText = song.artist;
 		$(".song-image", songItem).src = song.image;
 
@@ -622,6 +626,153 @@ class SongManager {
 			const songItem = SongManager.createSongItem(song);
 			SongManager.songList.appendChild(songItem);
 		});
+	}
+}
+
+class AudioManager {
+	static {
+		this.songAudio = new Audio();
+		this.interactionAudio = new Audio("assets/interaction.wav");
+		this.interactionAudio.volume = 0;
+
+		this.setVolume(localStorage.getItem("volume") || 50);
+
+		// update seekbar on audio events
+
+		this.songAudio.onloadedmetadata = () =>
+			SeekbarManager.setDuration(this.getDuration());
+
+		this.songAudio.ontimeupdate = () => {
+			if (this.songAudio.readyState > 0)
+				SeekbarManager.setProgress(this.getCurrentTime() / this.getDuration());
+		};
+
+		this.songAudio.onended = () => {
+			if (SongManager.isAutoplayEnabled()) SongManager.playNext();
+		};
+
+		const changeVolume = (e) => AudioManager.changeVolume(e.deltaY < 0);
+
+		SeekbarManager.getSeekbar().onwheel = changeVolume;
+		SongManager.getImage().onwheel = changeVolume;
+	}
+
+	static pauseImage() {
+		SongManager.getImage().classList.add("image-paused");
+	}
+
+	static resumeImage() {
+		SongManager.getImage().classList.remove("image-paused");
+	}
+
+	static playInteractionAudio(wait = 0) {
+		if (Date.now() - this.lastInteractionAudioPlay < wait) return;
+		this.lastInteractionAudioPlay = Date.now();
+
+		this.interactionAudio.volume = this.getVolume() / 100;
+		this.interactionAudio.currentTime = 0;
+		this.interactionAudio.play();
+	}
+
+	static changeVolume(increase = true) {
+		let delta;
+
+		let currentVolume = AudioManager.getVolume();
+		if (increase) {
+			delta = currentVolume < 5 ? 1 : 5;
+		} else {
+			delta = currentVolume <= 5 ? -1 : -5;
+		}
+
+		AudioManager.addVolume(delta);
+	}
+
+	/**
+	 * @param {Song} song The song to play.
+	 */
+	static setSong(song) {
+		this.songAudio.src = song.file;
+	}
+
+	static play() {
+		if (this.songAudio.src) this.songAudio.play();
+		else SongManager.playNext();
+
+		this.resumeImage();
+	}
+
+	static getVolume() {
+		return Math.round(this.songAudio.volume * 100);
+	}
+
+	static addVolume(amount) {
+		this.setVolume(this.getVolume() + amount);
+
+		AudioManager.showVolumePopup();
+	}
+
+	static setVolume(volume) {
+		this.playInteractionAudio();
+		// prevent illegal values
+		if (volume < 0) volume = 0;
+		else if (volume > 100) volume = 100;
+
+		localStorage.setItem("volume", volume);
+
+		// set volume
+
+		this.songAudio.volume = volume / 100;
+	}
+
+	static showVolumePopup() {
+		PopupManager.showPopup(this.getVolume() + "%");
+	}
+
+	static pause() {
+		this.pauseImage();
+
+		this.songAudio.pause();
+	}
+
+	static isPaused() {
+		return this.songAudio.paused;
+	}
+
+	static toggle() {
+		if (this.isPaused()) {
+			this.play();
+
+			if (!SeekbarManager.isMouseOverSeekbar()) SeekbarManager.shrinkSeekbar();
+		} else {
+			this.pause();
+
+			SeekbarManager.enlargeSeekbar();
+		}
+	}
+
+	static getDuration() {
+		return this.songAudio.duration || 0;
+	}
+
+	static getCurrentTime() {
+		return this.songAudio.currentTime;
+	}
+
+	/**
+	 * @param {number} progress The progress in the range [0, 1].
+	 */
+	static setProgress(progress) {
+		this.songAudio.currentTime = this.getDuration() * progress;
+	}
+
+	static scrub(seconds) {
+		// prevent glitching sound by pausing and playing the audio after scrubbing stops
+		this.pause();
+
+		clearTimeout(this.scrubTimeout);
+		this.scrubTimeout = setTimeout(() => this.play(), 100);
+
+		this.songAudio.currentTime += seconds;
 	}
 }
 
@@ -668,16 +819,19 @@ class SearchManager {
 				SearchManager.clearResults();
 
 				found.forEach((song) => SearchManager.addResult(song));
+
+				SearchManager.selectNext();
 			});
-		}, 300);
+		}, 200);
 	}
+
 	static playCurrentResultItem() {
 		this.playResult(this.currentResultItem);
 	}
 
 	static playResult(resultItem) {
 		// unset song from song list, otherwise we need to search for it
-		SongManager.setActive(null);
+		SongManager.setActiveById(resultItem.id);
 		SongManager.playSong(resultItem.id);
 		SearchManager.toggle();
 	}
@@ -734,7 +888,7 @@ class SearchManager {
 
 		resultItem.id = song.id;
 
-		$(".search-result-song-name", resultItem).innerText = song.name;
+		$(".search-result-song-title", resultItem).innerText = song.title;
 		$(".search-result-song-artist", resultItem).innerText = song.artist;
 
 		this.results.appendChild(resultItem);
@@ -778,7 +932,7 @@ class AnimationManager {
 
 		this.animateImage = (x, y) => {
 			image.style.transform = `
-				perspective(5px) 
+				perspective(5px)
 				translate(${x * 0.1}px, ${y * 0.1}px)
 				rotateX(${0.00008 * -y}deg) 
 				rotateY(${0.00008 * x}deg)

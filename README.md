@@ -20,16 +20,18 @@ A music player built in vanilla web technologies out of the need of a good music
 - `CTRL+M`: Add a marker
 - `CTRL+C`: Clear all marker
 - `CTRL+E`: Toggle animations off
+- `CTRL+Plus` Increase volume
+- `CTRL+Minus` Decrease volume
 - `A-Za-z`: Start search
 - `Escape`: Close search
 - `Space`: Play, pause or start a song
-- `ArrowLeft`: Scrub forwards
-- `ArrowRight`: Scrub backwards
+- `ArrowLeft`: Scrub forwards (Hold `SHIFT` for fine and `CTRL` for rough scrubbing)
+- `ArrowRight`: Scrub backwards (Hold `SHIFT` for fine and `CTRL` for rough scrubbing)
 - `ArrowUp`: Play previous song or select previous search result
 - `ArrowDown`: Play next song or select previous search result
 - `Enter`: Play currently selected search result
 
-> **Note**: To adjust the volume, use the mouse wheel on the seekbar.
+> **Note**: You can use your mouse wheel on the seekbar or album cover to adjust the volume.
 
 ## Marker
 
@@ -42,8 +44,13 @@ Play with the album cover.
 
 ## Todo
 
-- Backend server
-- Keybinds menu
-- Adjusting volume with keybinds
-- Playlists
-- Queues
+- [x] Backend server
+- [ ] Keybinds menu
+- [x] Adjusting volume with keybinds
+- [ ] Playlists
+- [ ] Queues
+- [ ] Sync live changes
+- [ ] Rainbow seekbar
+- [ ] Sort by newest modification date
+- [ ] Shuffle
+- [ ] Marker
