@@ -1,0 +1,367 @@
+@import "https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap";
+
+#main {
+	height: 100vh;
+}
+
+#player-main {
+	height: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.player-container {
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 100%;
+}
+
+#song-list {
+	user-select: none;
+	min-width: 600px;
+	max-width: 70%;
+	padding: 20px;
+	height: 80%;
+	min-width: 70%;
+	max-width: 70%;
+	overflow: auto;
+	margin: 0;
+}
+
+@media (max-width:1100px) {
+	.player-container {
+		overflow: hidden;
+	}
+
+	#song-list {
+		padding: 0;
+		height: 90%;
+		min-width: 90%;
+		max-width: 90%;
+	}
+
+	#player-main {
+		flex-direction: column-reverse;
+	}
+
+	#image {
+		max-height: 90% !important;
+		max-width: auto !important;
+	}
+}
+
+#image {
+	border-radius: 10px;
+	box-shadow: 0 0 100px 0 var(--image-shadow);
+	transition: transform 0.5s, scale 1s, filter 0.2s;
+	user-select: none;
+	-webkit-user-drag: none;
+	-moz-user-select: none;
+	-webkit-user-select: none;
+	-ms-user-select: none;
+	max-height: 50%;
+	max-width: 90%;
+	opacity: 1;
+}
+
+#image:hover {
+	scale: 1.03
+}
+
+#image[src=''] {
+	display: none;
+}
+
+
+#search-container {
+	align-items: center;
+	display: flex;
+	flex-direction: column;
+	height: 60%;
+	justify-content: flex-start;
+	width: 80%
+}
+
+.image-paused {
+	scale: 0.98;
+	filter: saturate(0.1) brightness(0.5);
+}
+
+#search-input {
+	background: none;
+	border-style: none;
+	color: var(--primary);
+	font-size: 128px;
+	font-weight: 700;
+	outline: none;
+	width: 100%
+}
+
+.search-result-item {
+	padding: 0 10px;
+	cursor: pointer;
+	transition: color 0.1s, padding 0.1s, letter-spacing 0.1s;
+}
+
+.search-result-item-active,
+.search-result-item:hover {
+	color: var(--primary);
+	padding: 0 20px;
+	font-weight: bold;
+	letter-spacing: 2px;
+}
+
+
+.search-result {
+	overflow: hidden;
+	white-space: nowrap;
+	gap: 20px;
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+}
+
+.search-result-song-title,
+.search-result-song-artist,
+.search-result {
+	pointer-events: none;
+}
+
+.search-result-song-artist {
+	font-size: 30px;
+	overflow: hidden;
+}
+
+#search-main {
+	align-items: center;
+	backdrop-filter: blur(10px);
+	background: var(--background-opaque);
+	display: flex;
+	height: 100%;
+	opacity: 0;
+	pointer-events: none;
+	position: absolute;
+	transition: opacity .1s;
+	width: 100%;
+	z-index: 1;
+	justify-content: center
+}
+
+#search-results {
+	color: var(--image-shadow);
+	font-size: 42px;
+	list-style: none;
+	margin: 0;
+	overflow: auto;
+	padding: 0;
+	width: 100%
+}
+
+#seekbar {
+	user-select: none;
+	align-items: flex-end;
+	bottom: 0;
+	display: flex;
+	flex-direction: row;
+	min-height: 79px;
+	overflow: hidden;
+	position: absolute;
+	width: 100%;
+	z-index: 2
+}
+
+#seekbar-current-song-duration-text,
+.song-artist {
+	color: var(--secondary)
+}
+
+#seekbar-current-time {
+	display: flex;
+	opacity: 0;
+	transition: opacity .1s linear
+}
+
+#seekbar-knob {
+	align-items: center;
+	display: flex;
+	flex-direction: column;
+	position: relative;
+	transform: translateX(-50%);
+	transition: opacity .1s linear;
+	width: 0;
+	z-index: 1
+}
+
+#seekbar-knob-circle {
+	background-color: var(--highlight);
+	border-radius: 50%;
+	bottom: 50%;
+	box-shadow: 0 0 40px 0 var(--highlight-darker);
+	height: 5px;
+	transition: all .1s linear;
+	width: 5px
+}
+
+#seekbar-progress {
+	background-color: var(--highlight);
+	box-shadow: 0 0 30px 0 var(--highlight-darker);
+	height: 5px;
+	transition: height .2s
+}
+
+#seekbar-time-separator {
+	color: var(--secondary);
+	padding: 0 5px
+}
+
+#popup {
+	user-select: none;
+	align-items: center;
+	background-color: var(--background-opaque);
+	display: none;
+	border-radius: 10px;
+	display: flex !important;
+	font-size: 128px;
+	justify-content: center;
+	left: 50%;
+	width: min-content;
+	opacity: 0;
+	padding: 10px;
+	pointer-events: none;
+	position: absolute;
+	top: 50%;
+	transform: translate(-50%, -50%);
+	transition: all .05s linear;
+	z-index: 3
+}
+
+#popup-text {
+	text-align: center;
+	background: none;
+	font-weight: 700
+}
+
+.current-time-active {
+	opacity: 1 !important
+}
+
+.knob-circle-active {
+	height: 50px !important;
+	transform: translateY(40%);
+	width: 50px !important
+}
+
+.knob-hover {
+	opacity: 100% !important
+}
+
+.marker {
+	background: var(--highlight-yellow);
+	box-shadow: 0 0 10px 0 var(--highlight-yellow);
+	height: 5px;
+	position: absolute;
+	transition: height .2s;
+	width: 3px;
+	z-index: 3
+}
+
+.search-active {
+	opacity: 1 !important;
+	pointer-events: initial !important
+}
+
+.seekbar-hover {
+	height: 15px !important
+}
+
+.song-body {
+	display: flex;
+	flex-direction: column;
+	min-height: 50px;
+	justify-content: space-around;
+	padding: 0 10px;
+	pointer-events: none
+}
+
+.song-image {
+	max-height: 35px;
+	padding: 10px;
+	pointer-events: none
+}
+
+.song-item {
+	align-items: center;
+	border-bottom: 1px solid var(--ternary);
+	display: flex;
+	padding: 5px;
+	transition: all .2s
+}
+
+.song-item-active {
+	background-color: var(--ternary)
+}
+
+.popup-active {
+	font-size: 120px !important;
+	opacity: 1 !important
+}
+
+::-webkit-scrollbar {
+	border-radius: 10px;
+	display: none;
+	width: 10px
+}
+
+::-webkit-scrollbar-thumb {
+	min-height: 100px;
+	background: var(--secondary);
+	border-radius: 10px
+}
+
+::-webkit-scrollbar-track {
+	background: var(--ternary)
+}
+
+::selection {
+	background-color: var(--highlight)
+}
+
+:hover::-webkit-scrollbar {
+	display: initial
+}
+
+:root {
+	--background: #000;
+	--background-opaque: #000000e2;
+	--highlight: #FF003D;
+	--highlight-darker: #ff003ca0;
+	--highlight-yellow: #fbff00;
+	--image-shadow: #ffffff17;
+	--primary: #fff;
+	--secondary: #b8b8b8;
+	--ternary: #0c0c0c
+}
+
+body {
+	overflow: hidden;
+	background: var(--background);
+	color: var(--primary);
+	display: flex;
+	flex-direction: column;
+	font-family: Inter;
+	font-size: 18px;
+	height: 100%;
+	margin: 0
+}
+
+hr {
+	border: 2px solid var(--image-shadow);
+	width: 100%
+}
+
+html {
+	height: 100%
+}
