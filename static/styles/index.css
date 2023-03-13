@@ -1,62 +1,70 @@
 @import "https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap";
 
-@media (max-width:1550px) {
+#main {
+	height: 100vh;
+}
 
+#player-main {
+	height: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+}
+
+.player-container {
+	width: 100%;
+	display: flex;
+	justify-content: center;
+	align-items: center;
+	height: 100%;
+}
+
+#song-list {
+	user-select: none;
+	min-width: 600px;
+	max-width: 70%;
+	padding: 20px;
+	height: 80%;
+	min-width: 70%;
+	max-width: 70%;
+	overflow: auto;
+	margin: 0;
+}
+
+@media (max-width:1100px) {
+	.player-container {
+		overflow: hidden;
+	}
+
+	#song-list {
+		padding: 0;
+		height: 90%;
+		min-width: 90%;
+		max-width: 90%;
+	}
 
 	#player-main {
 		flex-direction: column-reverse;
 	}
 
-	.player-container {
-		padding: 10px 0 !important;
-	}
-
 	#image {
-		max-width: 500px !important;
+		max-height: 90% !important;
+		max-width: auto !important;
 	}
 }
-
-@media(max-width:700px) {
-
-	#main,
-	#player-main {
-		height: auto !important;
-	}
-
-	#main {
-		justify-content: flex-start;
-	}
-
-	#song-list {
-		min-width: 80% !important;
-	}
-
-	#image {
-		min-width: 0px !important;
-		width: 80% !important;
-	}
-}
-
-@media(max-width:400px) {
-	#song-list {
-		min-width: 90% !important;
-	}
-
-	#image {
-		min-width: 0px !important;
-		width: 90% !important;
-	}
-
-}
-
 
 #image {
 	border-radius: 10px;
 	box-shadow: 0 0 100px 0 var(--image-shadow);
-	min-width: 500px;
-	transition: transform 0.5s, scale 1s;
+	transition: transform 0.5s, scale 1s, filter 0.2s;
 	user-select: none;
-	width: 50%
+	-webkit-user-drag: none;
+	-moz-user-select: none;
+	-webkit-user-select: none;
+	-ms-user-select: none;
+	max-height: 50%;
+	max-width: 90%;
+	opacity: 1;
 }
 
 #image:hover {
@@ -64,22 +72,9 @@
 }
 
 #image[src=''] {
-	display: none
+	display: none;
 }
 
-#main {
-	display: flex;
-	flex-direction: column;
-	height: 100%;
-	justify-content: center
-}
-
-#player-main {
-	align-items: center;
-	display: flex;
-	height: 80%;
-	justify-content: space-around
-}
 
 #search-container {
 	align-items: center;
@@ -88,6 +83,11 @@
 	height: 60%;
 	justify-content: flex-start;
 	width: 80%
+}
+
+.image-paused {
+	scale: 0.98;
+	filter: saturate(0.1) brightness(0.5);
 }
 
 #search-input {
@@ -102,7 +102,6 @@
 
 .search-result-item {
 	padding: 0 10px;
-	scroll-snap-align: start;
 	cursor: pointer;
 	transition: color 0.1s, padding 0.1s, letter-spacing 0.1s;
 }
@@ -112,18 +111,9 @@
 	color: var(--primary);
 	padding: 0 20px;
 	font-weight: bold;
-	letter-spacing: 5px;
+	letter-spacing: 2px;
 }
 
-.search-result-item-active .search-result-song-name,
-.search-result-item:hover .search-result-song-name {
-	color: var(--primary) !important;
-}
-
-
-.search-result-song-name {
-	color: var(--secondary);
-}
 
 .search-result {
 	overflow: hidden;
@@ -134,14 +124,15 @@
 	justify-content: space-between;
 }
 
-.search-result-song-name {
-	overflow: hidden;
+.search-result-song-title,
+.search-result-song-artist,
+.search-result {
+	pointer-events: none;
 }
 
 .search-result-song-artist {
-	font-size: 50px;
+	font-size: 30px;
 	overflow: hidden;
-	max-width: 40%;
 }
 
 #search-main {
@@ -160,9 +151,8 @@
 }
 
 #search-results {
-	scroll-snap-type: y mandatory;
 	color: var(--image-shadow);
-	font-size: 64px;
+	font-size: 42px;
 	list-style: none;
 	margin: 0;
 	overflow: auto;
@@ -171,6 +161,7 @@
 }
 
 #seekbar {
+	user-select: none;
 	align-items: flex-end;
 	bottom: 0;
 	display: flex;
@@ -226,17 +217,8 @@
 	padding: 0 5px
 }
 
-#song-list {
-	height: 100%;
-	margin: 0;
-	max-width: 70%;
-	min-width: 700px;
-	overflow: auto;
-	padding: 0;
-	scroll-snap-type: y mandatory;
-}
-
 #popup {
+	user-select: none;
 	align-items: center;
 	background-color: var(--background-opaque);
 	display: none;
@@ -286,15 +268,6 @@
 	z-index: 3
 }
 
-.player-container {
-	align-items: center;
-	display: flex;
-	height: 100%;
-	justify-content: center;
-	padding: 30px 0;
-	width: 100%
-}
-
 .search-active {
 	opacity: 1 !important;
 	pointer-events: initial !important
@@ -307,7 +280,7 @@
 .song-body {
 	display: flex;
 	flex-direction: column;
-	height: 50px;
+	min-height: 50px;
 	justify-content: space-around;
 	padding: 0 10px;
 	pointer-events: none
@@ -324,7 +297,6 @@
 	border-bottom: 1px solid var(--ternary);
 	display: flex;
 	padding: 5px;
-	scroll-snap-align: center;
 	transition: all .2s
 }
 
@@ -344,6 +316,7 @@
 }
 
 ::-webkit-scrollbar-thumb {
+	min-height: 100px;
 	background: var(--secondary);
 	border-radius: 10px
 }
@@ -373,6 +346,7 @@
 }
 
 body {
+	overflow: hidden;
 	background: var(--background);
 	color: var(--primary);
 	display: flex;
