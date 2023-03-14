@@ -11,10 +11,6 @@ import {
 	stopWatch,
 } from "./songs.services.js";
 
-function fixMetadata(song) {
-	if (song.title == undefined) song.title = song.filename;
-}
-
 function addImageLinksToSong(song) {
 	// TODO: Overall this is hacky, instead of supplying the bytearray of the image, supply the url to the image.
 	//  There might be a better way to do this.
@@ -122,10 +118,7 @@ router.get("/multiple", async (req, res, next) => {
 
 		const songs = await findSongs(ids);
 
-		for (const song of songs) {
-			addImageLinksToSong(song);
-			fixMetadata(song);
-		}
+		for (const song of songs) addImageLinksToSong(song);
 
 		res.json(songs);
 	}
@@ -152,7 +145,6 @@ router.get("/:id", async (req, res, next) => {
 		}
 
 		addImageLinksToSong(song);
-		fixMetadata(song);
 
 		res.json(song);
 	} catch (err) {
