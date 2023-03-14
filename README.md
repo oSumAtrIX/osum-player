@@ -2,6 +2,10 @@
 
 A music player built in vanilla web technologies out of the need of a good music player.
 
+## 🔬 Demo
+
+Will be added soon
+
 ## 🖼️ Previews
 
 ### ▶️ Player
