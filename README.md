@@ -49,7 +49,7 @@ Access the player from any device.
 - `CTRL+A`: Toggle autoplay
 - `CTRL+M`: Add a marker
 - `CTRL+C`: Clear all marker
-- `CTRL+E`: Toggle animations off
+- `CTRL+E`: Toggle animations
 - `CTRL+Plus` Increase volume
 - `CTRL+Minus` Decrease volume
 - `A-Za-z`: Start search
