@@ -26,7 +26,7 @@ Add marker to your favourite spots or highlights
 
 Access the player from any device
 
-<img height=600px src=https://user-images.githubusercontent.com/13122796/224856336-f4d13aa2-98ce-4f69-8466-2d227916165f.png>
+<img src=https://user-images.githubusercontent.com/13122796/224856336-f4d13aa2-98ce-4f69-8466-2d227916165f.png>
 
 ## ⭐ Features
 
