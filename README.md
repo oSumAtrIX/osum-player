@@ -8,27 +8,29 @@ Will be added soon
 
 ## 🖼️ Previews
 
+Get a glimpse into osum!player and it's features.
+
 ### ▶️ Player
 
-Intuitive and minimalistic player with your keyboard in mind
+Intuitive and minimalistic player with your keyboard in mind.
 
 <img src=https://user-images.githubusercontent.com/13122796/224856281-1c4513c5-f405-4f35-a504-0bb389e7f733.png>
 
 ### 🔍 Search
 
-Effortless instant global search
+Effortless instant global search.
 
 <img src=https://user-images.githubusercontent.com/13122796/224856294-fa23d28e-86d1-46a0-b754-d25c951c1a15.png>
 
 ### 🚩 Marker
 
-Add marker to your favourite spots or highlights
+Add marker to your favourite spots or highlights.
 
 <img src=https://user-images.githubusercontent.com/13122796/224856313-746abc8c-a93f-40fe-af3a-3827a39cb428.png>
 
 ### 📱 Mobile view
 
-Access the player from any device
+Access the player from any device.
 
 <img src=https://user-images.githubusercontent.com/13122796/224856336-f4d13aa2-98ce-4f69-8466-2d227916165f.png>
 
