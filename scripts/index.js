@@ -1,13 +1,15 @@
 const $ = (selector, target) => (target || document).querySelector(selector);
 
 class Song {
-	constructor(title, artist, image, file, id) {
+	constructor(title, artist, image, modified, id) {
+		const api = `${Song.api}/${id}`;
+
 		this.title = title;
 		this.artist = artist;
-		this.image = image || "assets/placeholder.png";
-		this.file = file;
+		this.image = image ? `${api}/image` : "assets/placeholder.png";
+		this.file = `${api}/file`;
+		this.modified = new Date(modified);
 		this.id = id;
-
 		this.marker = [];
 	}
 
@@ -17,6 +19,10 @@ class Song {
 		this.upload().then(() => {
 			PopupManager.showPopup("Added marker", 400);
 		});
+	}
+
+	setMarker(marker) {
+		this.marker = marker;
 	}
 
 	deleteMarker() {
@@ -35,20 +41,22 @@ class Song {
 		return this.marker;
 	}
 
-	addDuration(to) {
-		// TODO: remove this check if all songs have a duration
-		if (this.duration) {
-			const minutes = AudioManager.formatMinutes(song.duration);
-			to.innerText = minutes;
-		}
-	}
-
 	getFullImage() {
 		return this.image + "?full";
 	}
 
 	static fromJSON(json) {
-		return new Song(json.title, json.artist, json.image, json.file, json.id);
+		return new Song(
+			json.title,
+			json.artist,
+			json.image,
+			json.modified,
+			json.id
+		);
+	}
+
+	static setApi(api) {
+		this.api = api;
 	}
 }
 
@@ -95,21 +103,26 @@ class SeekbarManager {
 			 box-shadow: 0 0 20px 3px var(--highlight-yellow) !important;
 			}`;
 
-		// update seekbar on mouse events
-		// document is used instead of seekbar because the mouse can leave the seekbar
-		// and events will stop firing, for that reason mouseDownOriginIsSeekbar is used
-
+		// the last x position of the mouse on the seekbar
+		this.lastProgressX = 0;
 		const setProgress = (e) => {
 			if (e.timeStamp - this.lastSetProgressCall < 4) return;
 			this.lastSetProgressCall = e.timeStamp;
 
-			AudioManager.playInteractionAudio(60);
+			if (Math.abs(this.lastProgressX - e.clientX) > 20) {
+				AudioManager.playInteractionAudio(60);
+				this.lastProgressX = e.clientX;
+			}
 
 			const calculateProgress = (e) => e.clientX / this.seekbar.offsetWidth;
 			AudioManager.setProgress(calculateProgress(e));
 
 			PopupManager.showPopup(this.currentTimeText.innerText, 300);
 		};
+
+		// update seekbar on mouse events
+		// document is used instead of seekbar because the mouse can leave the seekbar
+		// and events will stop firing, for that reason mouseDownOriginIsSeekbar is used
 
 		let mouseDownOriginIsSeekbar = false;
 
@@ -283,7 +296,6 @@ class EventManager {
 					case "Slash":
 						AudioManager.changeVolume(false);
 						return;
-
 					case "KeyE":
 						e.preventDefault();
 						AnimationManager.toggleAnimations();
@@ -292,9 +304,17 @@ class EventManager {
 						e.preventDefault();
 						SeekbarManager.createMarker();
 						return;
+					case "KeyS":
+						e.preventDefault();
+						SongManager.toggleShuffle();
+						return;
 					case "KeyC":
 						e.preventDefault();
 						SeekbarManager.deleteMarker();
+						return;
+					case "KeyO":
+						e.preventDefault();
+						SongManager.toggleSortByModifiedDate();
 						return;
 					case "KeyA":
 						if (
@@ -356,6 +376,8 @@ class ApiManager {
 				"Content-Type": "application/json",
 			},
 		});
+
+		Song.setApi(`${this.getApi()}/songs`);
 	}
 
 	static setEndpoint(endpoint) {
@@ -405,12 +427,14 @@ class ApiManager {
 		return Song.fromJSON(json);
 	}
 
-	static async getSongIds(offset) {
+	static async getSongIds(offset, sortByModifiedDate) {
 		const ids = [];
 
-		(await this.request(`/songs/offset/${offset}`)).forEach((song) => {
-			ids.push(song.id);
-		});
+		let api = `/songs/offset/${offset}`;
+		if (sortByModifiedDate) api += "?sortByModifiedDate";
+
+		const response = await this.request(api);
+		response.forEach((song) => ids.push(song.id));
 
 		return ids;
 	}
@@ -423,11 +447,12 @@ class ApiManager {
 		});
 	}
 
+	static getApi() {
+		return `${this.endpoint}/api/v${this.apiVersion}`;
+	}
+
 	static async request(api, options) {
-		const response = await fetch(
-			`${this.endpoint}/api/v${this.apiVersion}${api}`,
-			options
-		);
+		const response = await fetch(`${this.getApi()}${api}`, options);
 
 		return response.json();
 	}
@@ -440,12 +465,18 @@ class SongManager {
 		this.songItem = $("#song-item-template").content.firstElementChild;
 
 		this.songs = new Map();
+		this.songsCount = 0;
+
 		this.currentSongItem = null;
 		this.currentSong = null;
 
 		this.autoplay = localStorage.getItem("autoplay") || false;
 
-		this.lastOffsetId = 0;
+		this.offset = 0;
+
+		this.sortByModifiedDate =
+			localStorage.getItem("sortByModifiedDate") || false;
+		this.shuffle = localStorage.getItem("shuffle") || false;
 
 		// handle song playback
 		this.songList.onclick = (e) => {
@@ -470,7 +501,41 @@ class SongManager {
 			AudioManager.toggle();
 		};
 
+		this.getNewSongs().catch((_) => {
+			console.log(_);
+			PopupManager.showPopup("Disconnected", 60 * 1000);
+		});
+	}
+
+	static toggleShuffle() {
+		this.shuffle = !this.shuffle;
+		localStorage.setItem("shuffle", this.shuffle);
+
+		PopupManager.showPopup(
+			"Shuffle " + (this.shuffle ? "enabled" : "disabled"),
+			600
+		);
+	}
+
+	static isSortedByModifiedDate() {
+		return this.sortByModifiedDate;
+	}
+
+	static async toggleSortByModifiedDate() {
+		this.sortByModifiedDate = !this.sortByModifiedDate;
+		localStorage.setItem("sortByModifiedDate", this.sortByModifiedDate);
+
+		this.songList.innerHTML = "";
+		this.offset = 0;
+
+		this.songs.clear(); // sadly required, otherwise songs will not be added
+
 		this.getNewSongs();
+
+		PopupManager.showPopup(
+			"Date " + (this.sortByModifiedDate ? "modified" : "added"),
+			600
+		);
 	}
 
 	static getImage() {
@@ -506,13 +571,17 @@ class SongManager {
 
 		if (missingSongs.length == 0) return songs;
 
-		const newSongs = await ApiManager.getSongs(missingSongs);
+		let newSongs = await ApiManager.getSongs(missingSongs);
+
+		if (this.sortByModifiedDate)
+			newSongs = newSongs.sort((a, b) => b.modified - a.modified);
 
 		this.addSongsToList(newSongs);
 
 		// add newly found songs to cache
 		for (const song of newSongs) {
 			this.songs.set(song.id, song);
+			this.songsCount++;
 
 			// merge with songs from cache
 			songs.push(song);
@@ -522,10 +591,14 @@ class SongManager {
 	}
 
 	static async getNewSongs() {
-		const ids = await ApiManager.getSongIds(this.lastOffsetId);
+		const ids = await ApiManager.getSongIds(
+			this.offset,
+			this.sortByModifiedDate
+		);
 
-		// fetch new songs starting at the last offset id
-		this.lastOffsetId = ids[ids.length - 1] + 1;
+		this.offset = this.sortByModifiedDate
+			? this.offset + 1 // if sorting by modified date, paginate by 1
+			: ids[ids.length - 1] + 1; // otherwise, paginate by last id
 
 		const songs = await this.getSongs(ids);
 		return songs;
@@ -582,6 +655,10 @@ class SongManager {
 	}
 
 	static playNext() {
+		if (this.shuffle) {
+			PopupManager.showPopup("Shuffle not implemented yet", 600);
+		}
+
 		let next;
 		if (this.currentSongItem) {
 			next = this.currentSongItem.nextElementSibling;
@@ -596,6 +673,10 @@ class SongManager {
 	}
 
 	static playPrevious() {
+		if (this.shuffle) {
+			PopupManager.showPopup("Shuffle not implemented yet", 600);
+		}
+
 		let next;
 		if (this.currentSongItem) {
 			next = this.currentSongItem.previousElementSibling;
@@ -615,8 +696,6 @@ class SongManager {
 		$(".song-title", songItem).innerText = song.title;
 		$(".song-artist", songItem).innerText = song.artist;
 		$(".song-image", songItem).src = song.image;
-
-		song.addDuration($(".song-duration", songItem));
 
 		return songItem;
 	}
@@ -818,6 +897,9 @@ class SearchManager {
 			SongManager.querySongs(SearchManager.searchInput.value).then((found) => {
 				SearchManager.clearResults();
 
+				if (SongManager.isSortedByModifiedDate()) {
+					found = found.sort((a, b) => b.modified - a.modified);
+				}
 				found.forEach((song) => SearchManager.addResult(song));
 
 				SearchManager.selectNext();
@@ -846,6 +928,11 @@ class SearchManager {
 		if (resultItem) resultItem.classList.add("search-result-item-active");
 
 		this.currentResultItem = resultItem;
+
+		this.currentResultItem?.scrollIntoView({
+			behavior: "smooth",
+			block: "center",
+		});
 	}
 
 	static selectSearchInput() {
