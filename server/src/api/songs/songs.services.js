@@ -198,6 +198,8 @@ function add(song) {
  * @param {Song} song The song to remove.
  */
 async function removeSong(song) {
+	// TODO: also cleanup image cache
+
 	return db.song.delete({
 		where: {
 			id: song.id,
