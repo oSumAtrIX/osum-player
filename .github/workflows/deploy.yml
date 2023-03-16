@@ -1,6 +1,7 @@
 on:
   push:
-    branches: [ "dev" ]
+    paths:
+      - static/*
   workflow_dispatch:
 
 jobs:

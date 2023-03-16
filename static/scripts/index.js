@@ -296,6 +296,9 @@ class EventManager {
 					case "Slash":
 						AudioManager.changeVolume(false);
 						return;
+					case "KeyR":
+						SongManager.toggleRepeat();
+						return;
 					case "KeyE":
 						e.preventDefault();
 						AnimationManager.toggleAnimations();
@@ -505,6 +508,10 @@ class SongManager {
 			console.log(_);
 			PopupManager.showPopup("Disconnected", 60 * 1000);
 		});
+	}
+
+	static toggleRepeat() {
+		// TODO: implement, but consider how to handle shuffle
 	}
 
 	static toggleShuffle() {
