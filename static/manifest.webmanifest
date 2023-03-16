@@ -1,0 +1,15 @@
+{
+  "background_color": "black",
+  "description": "A music player built in vanilla web technologies out of the need of a good music player.",
+  "display": "fullscreen",
+  "icons": [
+    {
+      "src": "assets/placeholder.png",
+      "sizes": "192x192",
+      "type": "image/png"
+    }
+  ],
+  "name": "osum!player",
+  "short_name": "osum!player",
+  "start_url": "/"
+}
