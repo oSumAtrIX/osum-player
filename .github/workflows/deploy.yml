@@ -8,8 +8,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
     - uses: actions/checkout@v3
+
     - name: Deploy
-      run: |
-        git subtree split --prefix static -b gh-pages
-        git push -f origin gh-pages:gh-pages
-        git branch -D gh-pages
+      uses: s0/git-publish-subdir-action@develop
+      env:
+        REPO: self
+        BRANCH: gh-pages
+        FOLDER: static
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
