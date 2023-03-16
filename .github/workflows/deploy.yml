@@ -1,0 +1,15 @@
+on:
+  push:
+    branches: [ "dev" ]
+  workflow_dispatch:
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v3
+    - name: Deploy
+      run: |
+        git subtree split --prefix static -b gh-pages
+        git push -f origin gh-pages:gh-pages
+        git branch -D gh-pages
