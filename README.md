@@ -81,6 +81,6 @@ Play with the album cover.
 - [ ] Queues
 - [ ] Sync live changes
 - [ ] Rainbow seekbar
-- [ ] Sort by newest modification date
+- [x] Sort by newest modification date
 - [ ] Shuffle
 - [ ] Marker

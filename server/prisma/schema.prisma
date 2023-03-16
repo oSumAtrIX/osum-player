@@ -12,8 +12,8 @@ model Song {
     title    String?
     artist   String?
     filename String   @unique
-    image    Bytes?
-    full_image Bytes?
+    image    Boolean
+    modified DateTime @default(now())
     marker   Marker[]
 }
 

@@ -6,6 +6,7 @@ import imageminWebp from "imagemin-webp";
 import chokidar from "chokidar";
 import parsePath from "parse-filepath";
 import fs from "fs";
+import sha1 from "sha1";
 
 const songsPerOffset = parseInt(process.env.SONGS_PER_OFFSET);
 let watcher = null;
@@ -83,20 +84,34 @@ export async function getSongFile(id) {
 		filename: true,
 	});
 
+	if (song === null) return null;
+
 	return path.join(process.env.SONGS_PATH, song.filename);
 }
 
-export function getSongImage(id, full = false) {
-	return findSong(
-		id,
-		full
-			? {
-					full_image: true,
-			  }
-			: {
-					image: true,
-			  }
-	);
+export async function getSongImage(id, full = false) {
+	const song = await findSong(id, {
+		filename: true,
+	});
+
+	if (song === null) return null;
+
+	// create path to image
+	const imageName = sha1(song.filename + (full ? "_full" : ""));
+	const imagePath = path.join(process.env.IMAGE_CACHE_PATH, imageName);
+
+	// check if image exists and return it or create it
+	if (fs.existsSync(imagePath)) return fs.readFileSync(imagePath);
+
+	const parsedSong = await parseSongFromFile(song.filename, true);
+
+	if (!(parsedSong && parsedSong.image)) return null;
+
+	const image = await compressImage(parsedSong.image, full ? 600 : 64);
+
+	fs.createWriteStream(imagePath).end(image);
+
+	return image;
 }
 
 /**
@@ -104,10 +119,11 @@ export function getSongImage(id, full = false) {
  * @param {string} query The query to search for.
  * @param {number} limit The limit of songs to return.
  * @param {number} offset The offset to start at.
+ * @param {boolean} orderByModifiedDate Whether to order by modified date.
  * @returns A list of song ids.
  */
-export function findSongIdsByQuery(query, limit = 8, offset = 0) {
-	return db.song.findMany({
+export function findSongIdsByQuery(query, limit, offset, orderByModifiedDate) {
+	const args = {
 		where: {
 			OR: [
 				{ title: { contains: query } },
@@ -120,22 +136,51 @@ export function findSongIdsByQuery(query, limit = 8, offset = 0) {
 		select: {
 			id: true,
 		},
-	});
+	};
+
+	if (orderByModifiedDate)
+		args.orderBy = {
+			modified: "desc",
+		};
+
+	return db.song.findMany(args);
 }
 
 /**
  * Find all songs in the database given an offset id.
- * @param {number} offsetId The offset id to start at.
+ * @param {number} offset The offset id to start at.
  * @returns A list of songs.
  */
-export function findIdsByOffset(offsetId) {
-	return db.song.findMany({
-		where: { id: { gte: offsetId } },
+export function findIdsByOffset(offset) {
+	const args = {
+		where: { id: { gte: offset } },
 		take: songsPerOffset,
 		select: {
 			id: true,
 		},
-	});
+	};
+
+	return db.song.findMany(args);
+}
+
+/**
+ * Find all songs in the database given an offset id ordered by the song file modified date.
+ * @param {number} page The page to start at.
+ * @returns A list of songs.
+ */
+export function findIdsByModifiedDate(page) {
+	const args = {
+		orderBy: {
+			modified: "desc",
+		},
+		skip: songsPerOffset * page,
+		take: songsPerOffset,
+		select: {
+			id: true,
+		},
+	};
+
+	return db.song.findMany(args);
 }
 
 /**
@@ -143,8 +188,6 @@ export function findIdsByOffset(offsetId) {
  * @param {Song} song The song to add.
  */
 function add(song) {
-	if (song.title == "") song.title = song.filename;
-
 	return db.song.create({
 		data: song,
 	});
@@ -203,28 +246,36 @@ function findByFilename(name) {
 
 /**
  * Parses a song from a file.
- * @param {string} name The filename of the song
+ * @param {string} name The filename of the song.
+ * @param {boolean} getImage Whether to return the image. If false, only the information if the song has an image is returned.
  */
-async function parseSongFromFile(name) {
-	const metadata = await parseFile(path.join(process.env.SONGS_PATH, name));
+async function parseSongFromFile(name, getImage = false) {
+	const songPath = path.join(process.env.SONGS_PATH, name);
+
+	let metadata = await parseFile(songPath);
 
 	const song = {
-		title: metadata.common.title,
+		title: metadata.common.title || name,
 		artist: metadata.common.artist,
 		filename: name,
+		modified: fs.statSync(songPath).mtime,
 	};
 
-	// Some songs don't have an image
-	if (metadata.common.picture) {
-		song.full_image = metadata.common.picture[0].data;
-		song.image = await imagemin.buffer(song.full_image, {
-			plugins: [imageminWebp({ resize: { width: 64, height: 64 } })],
-		});
-	}
+	const picture = metadata.common.picture;
+
+	if (!getImage) song.image = picture != null;
+	else if (picture) song.image = picture[0].data;
 
 	return song;
 }
 
+async function compressImage(image, size = 64) {
+	return imagemin.buffer(image, {
+		plugins: [
+			imageminWebp({ resize: { width: size, height: size }, method: 0 }),
+		],
+	});
+}
 /**
  * Gets all song names from the songs folder.
  * @returns A list of song filenames.
@@ -245,6 +296,7 @@ async function addSongsByName(filenames) {
 
 	for (const name of filenames) {
 		const parse = parseSongFromFile(name);
+
 		promises.push(parse);
 
 		// Add 10 songs at a time
@@ -254,7 +306,7 @@ async function addSongsByName(filenames) {
 			.filter((p) => p.value)
 			.map((p) => p.value);
 
-		await Promise.all(songs.map((song) => add(song)));
+		await Promise.all(songs.map(add));
 		promises.length = 0;
 	}
 }
@@ -264,8 +316,16 @@ async function addSongsByName(filenames) {
  * @param {string} filename The filename of the song.
  */
 async function addSongByName(filename) {
-	const song = await parseSongFromFile(filename);
-	await add(song);
+	const parsedSong = await parseSongFromFile(filename);
+
+	if (!parsedSong) return add({ filename });
+
+	const song = {
+		title: parsedSong.title,
+		artist: parsedSong.artist,
+	};
+
+	return add(song);
 }
 
 /**

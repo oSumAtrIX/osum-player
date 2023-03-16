@@ -5,23 +5,12 @@ import {
 	getSongImage,
 	findSong,
 	findSongIdsByQuery,
-	findIdsByOffset as findIdsByOffsetId,
+	findIdsByOffset,
+	findIdsByModifiedDate,
 	reload,
 	watch,
 	stopWatch,
 } from "./songs.services.js";
-
-function addImageLinksToSong(song) {
-	// TODO: Overall this is hacky, instead of supplying the bytearray of the image, supply the url to the image.
-	//  There might be a better way to do this.
-	const api = `http://${process.env.DOMAIN}:${process.env.SERVER_PORT}/api/v1/songs/${song.id}`;
-
-	// Replace the byte array with the url to the image
-	// That way the browser can load the image and cache it
-	if (song.image) song.image = api + "/image";
-
-	song.file = api + "/file";
-}
 
 const router = Router();
 
@@ -65,9 +54,14 @@ router.patch("/:id", async (_req, res, _next) => {
 	res.end();
 });
 
-router.get("/offset/:id", async (req, res, next) => {
+router.get("/offset/:offset", async (req, res, next) => {
 	try {
-		const songs = await findIdsByOffsetId(parseInt(req.params.id));
+		const sortByModifiedDate = req.query.hasOwnProperty("sortByModifiedDate");
+		const offset = parseInt(req.params.offset);
+
+		const songs = sortByModifiedDate
+			? await findIdsByModifiedDate(offset)
+			: await findIdsByOffset(offset);
 
 		res.json(songs);
 	} catch (err) {
@@ -93,8 +87,7 @@ router.get("/:id/image", async (req, res, next) => {
 		const id = parseInt(req.params.id);
 		const full = req.query.hasOwnProperty("full");
 
-		const song = await getSongImage(id, full);
-		const image = full ? song.full_image : song.image;
+		const image = await getSongImage(id, full);
 
 		if (image === null) {
 			res.status(404);
@@ -118,12 +111,9 @@ router.get("/multiple", async (req, res, next) => {
 
 		const songs = await findSongs(ids);
 
-		for (const song of songs) addImageLinksToSong(song);
-
 		res.json(songs);
 	}
 });
-// TODO: get many songs by their ids
 
 router.get("/:id", async (req, res, next) => {
 	try {
@@ -133,7 +123,8 @@ router.get("/:id", async (req, res, next) => {
 			id: true,
 			title: true,
 			artist: true,
-			image: true,
+			image: true, // required to detemine if the song should use a placeholder image
+			modified: true, // required for sorting in search for example
 		};
 
 		const song = await findSong(id, select);
@@ -143,8 +134,6 @@ router.get("/:id", async (req, res, next) => {
 			res.end();
 			return;
 		}
-
-		addImageLinksToSong(song);
 
 		res.json(song);
 	} catch (err) {
