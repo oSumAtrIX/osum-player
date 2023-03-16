@@ -84,3 +84,5 @@ Play with the album cover.
 - [x] Sort by newest modification date
 - [ ] Shuffle
 - [ ] Marker
+- [ ] Global hotkeys
+- [ ] Add new audio files with drag & drop
