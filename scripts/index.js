@@ -9,36 +9,76 @@ class Song {
 		this.image = image ? `${api}/image` : "assets/placeholder.png";
 		this.file = `${api}/file`;
 		this.modified = new Date(modified);
+		this.marker = undefined;
 		this.id = id;
-		this.marker = [];
 	}
 
 	addMarker(marker) {
-		this.marker.push(marker);
+		return this.uploadMarkerDelayedAction(
+			() => this.marker.push(marker),
+			"Marked",
+			marker
+		);
+	}
 
-		this.upload().then(() => {
-			PopupManager.showPopup("Added marker", 400);
-		});
+	clearMarker() {
+		return this.uploadMarkerDelayedAction(
+			() => (this.marker = []),
+			"Cleared",
+			"clear"
+		);
+	}
+
+	getMarker() {
+		return this.marker;
+	}
+
+	async loadMarker() {
+		// if the marker is already loaded, don't load it again
+		// this is pulled off by setting the marker to undefined initially,
+		// indicating that it hasn't been loaded yet
+		if (this.marker) {
+			SeekbarManager.loadMarkers();
+			return;
+		}
+
+		const marker = await ApiManager.getMarker(this.id);
+
+		this.setMarker(marker);
+		SeekbarManager.loadMarkers();
 	}
 
 	setMarker(marker) {
 		this.marker = marker;
 	}
 
-	deleteMarker() {
-		this.marker = [];
-
-		this.upload().then(() => {
-			PopupManager.showPopup("Cleared marker", 400);
-		});
+	upload(marker) {
+		return ApiManager.editSongMarker(this.id, marker);
 	}
 
-	async upload() {
-		await ApiManager.editSong(this.id);
-	}
+	/**
+	 * Uploads a marker and performs an action on success.
+	 * @param {()} action The action to perform on upload success.
+	 * @param {*} popupMessage The message to show on upload success.
+	 * @param {*} marker The marker to upload.
+	 * @returns {Promise} A promise that resolves when the upload is done.
+	 */
+	uploadMarkerDelayedAction(action, popupMessage, marker) {
+		const uploadTime = 20; // assumed ping to prevent the wrong popup from showing up too early
 
-	getMarker() {
-		return this.marker;
+		const timeout = setTimeout(
+			() => PopupManager.showPopup(popupMessage),
+			uploadTime
+		);
+
+		return this.upload(marker)
+			.then(() => action())
+			.catch(() => {
+				clearTimeout(timeout);
+				PopupManager.showPopup("Failed");
+
+				return Promise.reject("Failed to upload");
+			});
 	}
 
 	getFullImage() {
@@ -66,7 +106,7 @@ class PopupManager {
 		this.popupText = $("#popup-text");
 	}
 
-	static showPopup(text, duration = 400) {
+	static showPopup(text, duration = 600) {
 		// show popup
 		this.popupText.innerText = text;
 
@@ -165,31 +205,43 @@ class SeekbarManager {
 	}
 
 	static loadMarkers() {
-		this.clearMarker();
+		this.clearSeekbarMarker();
 
 		SongManager.getCurrentSong()
 			.getMarker()
-			.forEach((marker) => this.addMarker(marker));
+			.forEach((marker) => this.addMarkerToSeekbar(marker));
 	}
 
-	static createMarker() {
+	static addMarker() {
 		const marker =
 			(AudioManager.getCurrentTime() / AudioManager.getDuration()) * 100;
 
 		const song = SongManager.getCurrentSong();
 		if (!song) return;
 
-		song.addMarker(marker);
-		this.addMarker(marker);
+		const markerNode = SeekbarManager.addMarkerToSeekbar(marker);
+		song.addMarker(marker).catch(() => markerNode.remove());
 	}
 
-	static addMarker(marker) {
+	static async clearMarker() {
+		const song = SongManager.getCurrentSong();
+
+		if (!song) return;
+
+		if (!song.getMarker().length) return;
+
+		song.clearMarker().then(() => SeekbarManager.clearSeekbarMarker());
+	}
+
+	static addMarkerToSeekbar(marker) {
 		const markerNode = this.marker.cloneNode(true);
 		markerNode.style.left = `${marker}%`;
 		this.seekbar.appendChild(markerNode);
+
+		return markerNode;
 	}
 
-	static clearMarker() {
+	static clearSeekbarMarker() {
 		this.seekbar
 			.querySelectorAll(".marker")
 			.forEach((marker) => marker.remove());
@@ -197,14 +249,6 @@ class SeekbarManager {
 
 	static getSeekbar() {
 		return this.seekbar;
-	}
-
-	static deleteMarker() {
-		const song = SongManager.getCurrentSong();
-		if (!song) return;
-
-		song.deleteMarker();
-		SeekbarManager.clearMarker();
 	}
 
 	static isMouseOverSeekbar() {
@@ -296,21 +340,20 @@ class EventManager {
 					case "Slash":
 						AudioManager.changeVolume(false);
 						return;
+					case "KeyR":
+						SongManager.toggleRepeat();
+						return;
 					case "KeyE":
 						e.preventDefault();
 						AnimationManager.toggleAnimations();
 						return;
 					case "KeyM":
 						e.preventDefault();
-						SeekbarManager.createMarker();
-						return;
-					case "KeyS":
-						e.preventDefault();
-						SongManager.toggleShuffle();
+						SeekbarManager.addMarker();
 						return;
 					case "KeyC":
 						e.preventDefault();
-						SeekbarManager.deleteMarker();
+						SeekbarManager.clearMarker();
 						return;
 					case "KeyO":
 						e.preventDefault();
@@ -322,7 +365,7 @@ class EventManager {
 							!SearchManager.isActive()
 						) {
 							e.preventDefault();
-							SongManager.toggleAutoplay();
+							PlayModeManager.rotatePlayMode();
 							return;
 						}
 				}
@@ -387,8 +430,8 @@ class ApiManager {
 	}
 
 	// TODO: implement frontend for this
-	static async reload() {
-		return await this.request("/songs/reload", sendOption());
+	static reload() {
+		return this.request("/songs/reload", sendOption());
 	}
 
 	// TODO: make use of limit and offset
@@ -404,15 +447,26 @@ class ApiManager {
 	}
 
 	// TODO: implement frontend for this
-	static async watchForChanges(watch) {
-		return await this.request(
+	static watchForChanges(watch) {
+		return this.request(
 			"/songs/watch" + watch ? "?watch" : "",
 			this.sendOption()
 		);
 	}
 
+	static async getMarker(id) {
+		return await this.request(`/songs/${id}/marker`);
+	}
+
+	static async getRandomSong() {
+		const json = await this.request(`/songs/random`);
+		return Song.fromJSON(json);
+	}
 	static async getSongs(ids) {
-		const json = await this.request(`/songs/multiple?ids=${ids.join(",")}`);
+		const json = await this.request(`/songs/multiple`, {
+			...this.sendOption(),
+			body: JSON.stringify({ ids }),
+		});
 
 		const songs = [];
 		for (const song of json) {
@@ -439,11 +493,10 @@ class ApiManager {
 		return ids;
 	}
 
-	// TODO: implement frontend for this
-	static async editSong(id, song) {
-		return await this.request(`/songs/${id}`, {
+	static async editSongMarker(id, marker) {
+		return this.request(`/songs/${id}/marker`, {
 			...this.sendOption("PATCH"),
-			body: JSON.stringify(song),
+			body: JSON.stringify({ marker }),
 		});
 	}
 
@@ -454,7 +507,40 @@ class ApiManager {
 	static async request(api, options) {
 		const response = await fetch(`${this.getApi()}${api}`, options);
 
+		if (!response.ok) return Promise.reject(response.status);
+
 		return response.json();
+	}
+}
+
+class PlayModeManager {
+	static {
+		this.AUTOPLAY = 0;
+		this.RANDOM = 1;
+		this.REPEAT = 2;
+		this.ONCE = 3;
+
+		this.playModes = new Map([
+			[this.AUTOPLAY, "Autoplay"],
+			[this.RANDOM, "Random"],
+			[this.REPEAT, "Repeat"],
+			[this.ONCE, "Once"],
+		]);
+
+		this.currentPlayMode = parseInt(localStorage.getItem("playMode")) || 0;
+	}
+
+	static getCurrentPlayMode() {
+		return this.currentPlayMode;
+	}
+
+	static rotatePlayMode() {
+		this.currentPlayMode = (this.currentPlayMode + 1) % this.playModes.size; // rotate play mode
+
+		localStorage.setItem("playMode", this.currentPlayMode);
+
+		const playMode = this.playModes.get(this.currentPlayMode);
+		PopupManager.showPopup(playMode);
 	}
 }
 
@@ -465,18 +551,14 @@ class SongManager {
 		this.songItem = $("#song-item-template").content.firstElementChild;
 
 		this.songs = new Map();
-		this.songsCount = 0;
 
 		this.currentSongItem = null;
 		this.currentSong = null;
-
-		this.autoplay = localStorage.getItem("autoplay") || false;
 
 		this.offset = 0;
 
 		this.sortByModifiedDate =
 			localStorage.getItem("sortByModifiedDate") || false;
-		this.shuffle = localStorage.getItem("shuffle") || false;
 
 		// handle song playback
 		this.songList.onclick = (e) => {
@@ -502,19 +584,8 @@ class SongManager {
 		};
 
 		this.getNewSongs().catch((_) => {
-			console.log(_);
 			PopupManager.showPopup("Disconnected", 60 * 1000);
 		});
-	}
-
-	static toggleShuffle() {
-		this.shuffle = !this.shuffle;
-		localStorage.setItem("shuffle", this.shuffle);
-
-		PopupManager.showPopup(
-			"Shuffle " + (this.shuffle ? "enabled" : "disabled"),
-			600
-		);
 	}
 
 	static isSortedByModifiedDate() {
@@ -530,31 +601,15 @@ class SongManager {
 
 		this.songs.clear(); // sadly required, otherwise songs will not be added
 
-		this.getNewSongs();
-
-		PopupManager.showPopup(
-			"Date " + (this.sortByModifiedDate ? "modified" : "added"),
-			600
+		this.getNewSongs().then(() =>
+			PopupManager.showPopup(
+				"Date " + (this.sortByModifiedDate ? "modified" : "added")
+			)
 		);
 	}
 
 	static getImage() {
 		return this.image;
-	}
-
-	static isAutoplayEnabled() {
-		return this.autoplay;
-	}
-
-	static toggleAutoplay() {
-		this.autoplay = !this.autoplay;
-
-		localStorage.setItem("autoplay", this.autoplay);
-
-		PopupManager.showPopup(
-			"Autoplay " + (this.autoplay ? "enabled" : "disabled"),
-			600
-		);
 	}
 
 	static async getSongs(ids) {
@@ -576,18 +631,22 @@ class SongManager {
 		if (this.sortByModifiedDate)
 			newSongs = newSongs.sort((a, b) => b.modified - a.modified);
 
-		this.addSongsToList(newSongs);
-
 		// add newly found songs to cache
 		for (const song of newSongs) {
-			this.songs.set(song.id, song);
-			this.songsCount++;
+			this.add(song);
 
 			// merge with songs from cache
 			songs.push(song);
 		}
 
 		return songs;
+	}
+
+	static add(song) {
+		if (this.songs.has(song.id)) return;
+
+		this.songs.set(song.id, song);
+		this.addSongToList(song);
 	}
 
 	static async getNewSongs() {
@@ -600,7 +659,7 @@ class SongManager {
 			? this.offset + 1 // if sorting by modified date, paginate by 1
 			: ids[ids.length - 1] + 1; // otherwise, paginate by last id
 
-		const songs = await this.getSongs(ids);
+		const songs = this.getSongs(ids);
 		return songs;
 	}
 
@@ -609,26 +668,31 @@ class SongManager {
 
 		if (ids.length == 0) return [];
 
-		const newSongs = await this.getSongs(ids);
-
+		const newSongs = this.getSongs(ids);
 		return newSongs;
 	}
 
-	static playSong(id) {
-		SongManager.currentSong = this.songs.get(parseInt(id));
+	static playSong(song) {
+		this.currentSong = song;
+
+		this.currentSong.loadMarker();
 
 		this.image.src = this.currentSong.getFullImage();
 
 		AudioManager.setSong(this.currentSong);
 		AudioManager.play();
+	}
 
-		SeekbarManager.loadMarkers();
+	static playSongId(id) {
+		const song = this.songs.get(parseInt(id));
+
+		this.playSong(song);
 	}
 
 	static playSongItem(songItem) {
 		if (!songItem) return;
 
-		this.playSong(songItem.id);
+		this.playSongId(songItem.id);
 		this.setActive(songItem);
 
 		songItem.scrollIntoViewIfNeeded(true);
@@ -655,10 +719,6 @@ class SongManager {
 	}
 
 	static playNext() {
-		if (this.shuffle) {
-			PopupManager.showPopup("Shuffle not implemented yet", 600);
-		}
-
 		let next;
 		if (this.currentSongItem) {
 			next = this.currentSongItem.nextElementSibling;
@@ -673,10 +733,6 @@ class SongManager {
 	}
 
 	static playPrevious() {
-		if (this.shuffle) {
-			PopupManager.showPopup("Shuffle not implemented yet", 600);
-		}
-
 		let next;
 		if (this.currentSongItem) {
 			next = this.currentSongItem.previousElementSibling;
@@ -700,11 +756,9 @@ class SongManager {
 		return songItem;
 	}
 
-	static addSongsToList(songs) {
-		songs.forEach((song) => {
-			const songItem = SongManager.createSongItem(song);
-			SongManager.songList.appendChild(songItem);
-		});
+	static addSongToList(song) {
+		const songItem = SongManager.createSongItem(song);
+		SongManager.songList.appendChild(songItem);
 	}
 }
 
@@ -726,8 +780,21 @@ class AudioManager {
 				SeekbarManager.setProgress(this.getCurrentTime() / this.getDuration());
 		};
 
-		this.songAudio.onended = () => {
-			if (SongManager.isAutoplayEnabled()) SongManager.playNext();
+		this.songAudio.onended = async () => {
+			switch (PlayModeManager.getCurrentPlayMode()) {
+				case PlayModeManager.AUTOPLAY:
+					SongManager.playNext();
+					break;
+				case PlayModeManager.RANDOM:
+					const song = await ApiManager.getRandomSong();
+					SongManager.add(song);
+					SongManager.playSong(song);
+					SongManager.setActiveById(song.id);
+					break;
+				case PlayModeManager.REPEAT:
+					this.play();
+					break;
+			}
 		};
 
 		const changeVolume = (e) => AudioManager.changeVolume(e.deltaY < 0);
@@ -914,7 +981,7 @@ class SearchManager {
 	static playResult(resultItem) {
 		// unset song from song list, otherwise we need to search for it
 		SongManager.setActiveById(resultItem.id);
-		SongManager.playSong(resultItem.id);
+		SongManager.playSongId(resultItem.id);
 		SearchManager.toggle();
 	}
 
@@ -1019,11 +1086,11 @@ class AnimationManager {
 
 		this.animateImage = (x, y) => {
 			image.style.transform = `
-				perspective(5px)
-				translate(${x * 0.1}px, ${y * 0.1}px)
+				perspective(10px)
+				translate(${x * 0.05}px, ${y * 0.05}px)
 				rotateX(${0.00008 * -y}deg) 
 				rotateY(${0.00008 * x}deg)
-				rotate(${0.00005 * x * y}deg)
+				rotate(${0.00003 * x * y}deg)
 			`;
 		};
 
@@ -1083,8 +1150,7 @@ class AnimationManager {
 		else this.stop();
 
 		PopupManager.showPopup(
-			"Animations " + (this.animationsEnabled ? "enabled" : "disabled"),
-			600
+			"Animations " + (this.animationsEnabled ? "enabled" : "disabled")
 		);
 
 		if (this.animationsEnabled) {

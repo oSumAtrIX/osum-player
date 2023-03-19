@@ -219,8 +219,9 @@
 
 #popup {
 	user-select: none;
+	backdrop-filter: blur(10px);
 	align-items: center;
-	background-color: var(--background-opaque);
+	background-color: var(--background-even-more-opaque);
 	display: none;
 	border-radius: 10px;
 	display: flex !important;
@@ -262,7 +263,6 @@
 	box-shadow: 0 0 10px 0 var(--highlight-yellow);
 	height: 5px;
 	position: absolute;
-	transition: height .2s;
 	width: 3px;
 	z-index: 3
 }
@@ -288,7 +288,8 @@
 .song-image {
 	max-height: 35px;
 	margin: 10px;
-	pointer-events: none
+	pointer-events: none;
+	border-radius: 2px;
 }
 
 .song-item {
@@ -335,6 +336,8 @@
 :root {
 	--background: #000;
 	--background-opaque: #000000e2;
+	--background-even-more-opaque: #000000c2;
+
 	--highlight: #FF003D;
 	--highlight-darker: #ff003ca0;
 	--highlight-yellow: #fbff00;
