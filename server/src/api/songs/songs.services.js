@@ -79,6 +79,18 @@ export function findSongs(ids, select) {
 	});
 }
 
+export async function findSongRandom(select) {
+	const skip = Math.floor(Math.random() * (await db.song.count()));
+
+	const results = await db.song.findMany({
+		take: 1,
+		skip,
+		select,
+	});
+
+	return results[0];
+}
+
 export async function getSongFile(id) {
 	const song = await findSong(id, {
 		filename: true,
@@ -89,6 +101,18 @@ export async function getSongFile(id) {
 	return path.join(process.env.SONGS_PATH, song.filename);
 }
 
+/**
+ * Get the path to an image given a filename.
+ *
+ * @param {string} filename The filename of the song.
+ * @param {boolean} full If the full image should be returned.
+ * @returns
+ */
+function getImagePath(filename, full = false) {
+	const imageName = sha1(filename + (full ? "_full" : ""));
+	return path.join(process.env.IMAGE_CACHE_PATH, imageName);
+}
+
 export async function getSongImage(id, full = false) {
 	const song = await findSong(id, {
 		filename: true,
@@ -97,13 +121,18 @@ export async function getSongImage(id, full = false) {
 	if (song === null) return null;
 
 	// create path to image
-	const imageName = sha1(song.filename + (full ? "_full" : ""));
-	const imagePath = path.join(process.env.IMAGE_CACHE_PATH, imageName);
+	const imagePath = getImagePath(song.filename, full);
 
 	// check if image exists and return it or create it
-	if (fs.existsSync(imagePath)) return fs.readFileSync(imagePath);
+	const imageExists = await fileExists(imagePath);
+	if (imageExists) return readFile(imagePath);
 
-	const parsedSong = await parseSongFromFile(song.filename, true);
+	let parsedSong;
+	try {
+		parsedSong = await parseSongFromFile(song.filename, true);
+	} catch (e) {
+		console.log(e);
+	}
 
 	if (!(parsedSong && parsedSong.image)) return null;
 
@@ -126,9 +155,9 @@ export function findSongIdsByQuery(query, limit, offset, orderByModifiedDate) {
 	const args = {
 		where: {
 			OR: [
-				{ title: { contains: query } },
-				{ artist: { contains: query } },
-				{ filename: { contains: query } },
+				{ title: { contains: query, mode: "insensitive" } },
+				{ artist: { contains: query, mode: "insensitive" } },
+				{ filename: { contains: query, mode: "insensitive" } },
 			],
 		},
 		take: limit,
@@ -194,25 +223,103 @@ function add(song) {
 }
 
 /**
- * Remove a song from the database.
- * @param {Song} song The song to remove.
+ * Add a marker to a song.
+ * @param {integer} songId The id of the song to add the marker to.
+ * @param {*} marker The time of the marker.
  */
-async function removeSong(song) {
-	// TODO: also cleanup image cache
-
-	return db.song.delete({
-		where: {
-			id: song.id,
+export function addMarker(songId, marker) {
+	return db.marker.create({
+		data: {
+			marker,
+			song: {
+				connect: {
+					id: songId,
+				},
+			},
 		},
 	});
 }
 
+/**
+ * Get all markers from a song.
+ * @param {integer} songId The id of the song to get the markers from.
+ * @returns A list of markers.
+ */
+export async function getMarker(songId) {
+	const marker = await db.marker.findMany({
+		where: {
+			songId,
+		},
+		select: {
+			marker: true,
+		},
+	});
+	return marker.map((marker) => marker.marker);
+}
+/**
+ * Clear all marker from a song.
+ * @param {integer} songId The id of the song to remove the markers from.
+ */
+export function clearMarker(songId) {
+	return db.marker.deleteMany({
+		where: {
+			songId,
+		},
+	});
+}
+
+/**
+ * Remove a song from the database.
+ * @param {Song} song The song to remove.
+ */
+async function removeSong(song) {
+	const songId = song.id;
+
+	song = await findSong(songId, {
+		filename: true,
+	});
+
+	if (song === null) return;
+
+	deleteCache(song);
+
+	return db.song.delete({
+		where: {
+			id: songId,
+		},
+	});
+}
+
+function deleteCache(song) {
+	deleteFile(getImagePath(song.filename));
+	deleteFile(getImagePath(song.filename, true));
+}
+
+function deleteFile(file) {
+	if (fileExists(file)) {
+		fs.unlink(file);
+	}
+}
+
+async function fileExists(filePath) {
+	return new Promise((resolve) =>
+		fs.access(filePath, fs.constants.F_OK, (err) => resolve(err === null))
+	);
+}
+
+async function readFile(file) {
+	return new Promise((resolve, reject) =>
+		fs.readFile(file, (err, data) => (err ? reject(err) : resolve(data)))
+	);
+}
 /**
  * Removes songs from the database.
  * @param {Song[]} songs The songs to remove.
  * @returns The number of songs removed.
  */
 function removeSongs(songs) {
+	songs.forEach(deleteCache);
+
 	return db.song.deleteMany({
 		where: {
 			id: { in: songs.map((song) => song.id) },
@@ -254,21 +361,28 @@ function findByFilename(name) {
 async function parseSongFromFile(name, getImage = false) {
 	const songPath = path.join(process.env.SONGS_PATH, name);
 
-	let metadata = await parseFile(songPath);
+	let metadata = await parseFile(songPath, { skipCovers: !getImage });
 
-	const song = {
-		title: metadata.common.title || name,
-		artist: metadata.common.artist,
-		filename: name,
-		modified: fs.statSync(songPath).mtime,
-	};
+	return new Promise((resolve, reject) => {
+		fs.stat(songPath, (err, stats) => {
+			if (err) return reject(err);
 
-	const picture = metadata.common.picture;
+			const modified = stats.mtime;
+			const song = {
+				title: metadata.common.title || name,
+				artist: metadata.common.artist,
+				filename: name,
+				modified,
+			};
 
-	if (!getImage) song.image = picture != null;
-	else if (picture) song.image = picture[0].data;
+			const picture = metadata.common.picture;
 
-	return song;
+			if (!getImage) song.image = picture != null;
+			else if (picture) song.image = picture[0].data;
+
+			resolve(song);
+		});
+	});
 }
 
 async function compressImage(image, size = 64) {
@@ -279,14 +393,20 @@ async function compressImage(image, size = 64) {
 	});
 }
 /**
- * Gets all song names from the songs folder.
- * @returns A list of song filenames.
+ * Gets all file names from the songs folder.
+ * @returns A list of filenames.
  */
-function getSongNamesFromPath() {
-	return fs
-		.readdirSync(process.env.SONGS_PATH, { withFileTypes: true })
-		.filter((file) => file.isFile())
-		.map((file) => file.name);
+function getFileNamesFromPath() {
+	return new Promise((resolve, reject) =>
+		fs.readdir(
+			process.env.SONGS_PATH,
+			{ withFileTypes: true },
+			(err, files) => {
+				if (err) return reject(err);
+				resolve(files.filter((file) => file.isFile()).map((file) => file.name));
+			}
+		)
+	);
 }
 
 /**
@@ -294,22 +414,19 @@ function getSongNamesFromPath() {
  * @param {string[]} filenames A list of song filenames.
  */
 async function addSongsByName(filenames) {
-	const promises = [];
+	// Add 10 songs at a time
+	const chunkSize = 10;
+	for (let i = 0; i < filenames.length; i += chunkSize) {
+		const chunk = filenames.slice(i, i + chunkSize);
 
-	for (const name of filenames) {
-		const parse = parseSongFromFile(name);
-
-		promises.push(parse);
-
-		// Add 10 songs at a time
-		if (promises.length <= 10) continue;
-
-		const songs = (await Promise.allSettled(promises))
-			.filter((p) => p.value)
-			.map((p) => p.value);
+		const results = await Promise.allSettled(
+			chunk.map((filename) => parseSongFromFile(filename))
+		);
+		const songs = results
+			.filter((result) => result.status === "fulfilled")
+			.map((result) => result.value);
 
 		await Promise.all(songs.map(add));
-		promises.length = 0;
 	}
 }
 
@@ -318,7 +435,13 @@ async function addSongsByName(filenames) {
  * @param {string} filename The filename of the song.
  */
 async function addSongByName(filename) {
-	const parsedSong = await parseSongFromFile(filename);
+	let parsedSong;
+
+	try {
+		parsedSong = await parseSongFromFile(filename);
+	} catch (e) {
+		console.error(e);
+	}
 
 	if (!parsedSong) return add({ filename });
 
@@ -336,7 +459,7 @@ async function addSongByName(filename) {
  * @returns {string[]} A list of song filenames that are not in the database.
  */
 async function findMissingSongs(filenames) {
-	const names = filenames || getSongNamesFromPath();
+	const names = filenames || (await getFileNamesFromPath());
 
 	const existing = await findByFilenames(names);
 	const missingSongs = names.filter(
@@ -362,7 +485,7 @@ async function isMissing(filename) {
  * @returns {string[]} A list of songs that do not exist anymore.
  */
 async function findOrphanedSongs(filenames) {
-	const names = filenames || getSongNamesFromPath();
+	const names = filenames || (await getFileNamesFromPath());
 
 	const existing = await db.song.findMany({
 		select: {
@@ -383,7 +506,7 @@ async function findOrphanedSongs(filenames) {
  * It will add songs that are missing and remove songs that are orphaned.
  */
 export async function reload() {
-	const songNames = getSongNamesFromPath();
+	const songNames = await getFileNamesFromPath();
 
 	const missingSongs = await findMissingSongs(songNames);
 	await addSongsByName(missingSongs);

@@ -3,7 +3,7 @@ generator client {
 }
 
 datasource db {
-    provider = "sqlite"
+    provider = "postgresql"
     url      = env("DATABASE_URL")
 }
 
@@ -18,8 +18,8 @@ model Song {
 }
 
 model Marker {
-    id     Int  @id @default(autoincrement())
+    id     Int   @id @default(autoincrement())
     songId Int
-    time   Int
-    song   Song @relation(fields: [songId], references: [id])
+    marker Float
+    song   Song  @relation(fields: [songId], references: [id])
 }

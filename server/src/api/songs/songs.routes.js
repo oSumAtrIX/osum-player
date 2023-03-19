@@ -1,31 +1,43 @@
+import { parse } from "dotenv";
 import { query, Router } from "express";
 import {
 	findSongs,
 	getSongFile,
 	getSongImage,
-	findSong,
+	getMarker,
 	findSongIdsByQuery,
 	findIdsByOffset,
 	findIdsByModifiedDate,
 	reload,
 	watch,
 	stopWatch,
+	clearMarker,
+	addMarker,
+	findSongRandom,
 } from "./songs.services.js";
+import { getSong, getId } from "../../middlewares.js";
 
 const router = Router();
 
+const defaultSongColumnsSelection = {
+	artist: true,
+	title: true,
+	id: true,
+	image: true,
+	modified: true,
+};
+
 router.get("/", async (req, res, next) => {
 	if (req.query.hasOwnProperty("q")) {
-		res.json(
+		return res.json(
 			await findSongIdsByQuery(
 				req.query.q,
 				parseInt(req.query.limit || 8),
 				parseInt(req.query.offset || 0)
 			)
 		);
-	} else {
-		next();
 	}
+	next();
 });
 
 router.post("/", async (req, res, _next) => {
@@ -39,106 +51,132 @@ router.post("/", async (req, res, _next) => {
 });
 
 router.post("/reload", async (_req, res, next) => {
+	const start = Date.now();
+
 	try {
-		const start = Date.now();
 		await reload();
-		const end = Date.now();
-		res.json(`Reloaded songs in ${end - start}ms`);
 	} catch (err) {
-		next(err);
+		return next(err);
 	}
+
+	const end = Date.now();
+	res.json(`Reloaded songs in ${end - start}ms`);
 });
 
-router.patch("/:id", async (_req, res, _next) => {
-	// TODO: Add marker to database
-	res.end();
+router.patch("/:id/marker", getId, async (req, res, next) => {
+	if (!req.body.marker) return next(new Error("Invalid body"));
+	if (req.body.marker === "clear") {
+		try {
+			await clearMarker(req.id);
+		} catch (err) {
+			return next(err);
+		}
+
+		return res.json({ message: "Cleared marker" });
+	}
+
+	const marker = parseFloat(req.body.marker);
+
+	if (isNaN(marker)) return next(new Error("Marker must be a number"));
+
+	try {
+		await addMarker(req.id, marker);
+	} catch (err) {
+		return next(err);
+	}
+
+	res.json({ message: "Added marker" });
 });
 
 router.get("/offset/:offset", async (req, res, next) => {
-	try {
-		const sortByModifiedDate = req.query.hasOwnProperty("sortByModifiedDate");
-		const offset = parseInt(req.params.offset);
+	const offset = parseInt(req.params.offset);
 
-		const songs = sortByModifiedDate
+	if (isNaN(offset)) return next(new Error("Invalid offset"));
+
+	const sortByModifiedDate = req.query.hasOwnProperty("sortByModifiedDate");
+
+	let songs = null;
+	try {
+		songs = sortByModifiedDate
 			? await findIdsByModifiedDate(offset)
 			: await findIdsByOffset(offset);
-
-		res.json(songs);
 	} catch (err) {
-		next(err);
+		return next(err);
 	}
+
+	if (songs == null) return next(new Error("Failed to get songs"));
+
+	res.json(songs);
 });
 
-router.get("/:id/file", async (req, res, next) => {
+router.get("/random", async (_req, res, _next) => {
+	const song = await findSongRandom(defaultSongColumnsSelection);
+	res.json(song);
+});
+
+router.get("/:id/file", getId, async (req, res, next) => {
+	let filename = null;
 	try {
-		const id = parseInt(req.params.id);
-		const filename = await getSongFile(id);
-
-		res.setHeader("Content-Type", "audio/mpeg");
-
-		res.sendFile(filename);
+		filename = await getSongFile(req.id);
 	} catch (err) {
-		next(err);
+		return next(err);
 	}
+
+	if (filename === null) {
+		res.status(404);
+		res.end();
+		return;
+	}
+
+	res.setHeader("Content-Type", "audio/mpeg");
+	res.sendFile(filename);
 });
 
-router.get("/:id/image", async (req, res, next) => {
+router.get("/:id/image", getId, async (req, res, next) => {
+	const full = req.query.hasOwnProperty("full");
+
+	let image;
 	try {
-		const id = parseInt(req.params.id);
-		const full = req.query.hasOwnProperty("full");
-
-		const image = await getSongImage(id, full);
-
-		if (image === null) {
-			res.status(404);
-			res.end();
-			return;
-		}
-
-		res.setHeader("Cache-control", "public, max-age=3600");
-		res.setHeader("Content-Type", "image");
-		res.end(image);
+		image = await getSongImage(req.id, full);
 	} catch (err) {
-		next(err);
+		return next(err);
 	}
+
+	if (image === null) {
+		res.status(404);
+		res.end();
+		return;
+	}
+
+	res.setHeader("Cache-control", "public, max-age=3600");
+	res.setHeader("Content-Type", "image");
+	res.end(image);
 });
 
-router.get("/multiple", async (req, res, next) => {
-	if (req.query.hasOwnProperty("ids")) {
-		if (req.query.ids == "") return res.json([]);
+router.post("/multiple", async (req, res, next) => {
+	if (!req.body.ids) return next(new Error("Invalid body"));
+	if (req.query.ids == "") return res.json([]);
 
-		const ids = req.query.ids.split(",").map((id) => parseInt(id));
-
-		const songs = await findSongs(ids);
-
-		res.json(songs);
-	}
+	const songs = await findSongs(req.body.ids, defaultSongColumnsSelection);
+	res.json(songs);
 });
 
-router.get("/:id", async (req, res, next) => {
-	try {
-		const id = parseInt(req.params.id);
+router.get("/:id/marker", getId, async (req, res, next) => {
+	const marker = await getMarker(req.id);
 
-		const select = {
-			id: true,
-			title: true,
-			artist: true,
-			image: true, // required to detemine if the song should use a placeholder image
-			modified: true, // required for sorting in search for example
-		};
+	res.json(marker);
+});
 
-		const song = await findSong(id, select);
+router.get("/:id", getId, getSong, async (req, res, next) => {
+	const song = req.song;
 
-		if (song == null) {
-			res.status(404);
-			res.end();
-			return;
-		}
-
-		res.json(song);
-	} catch (err) {
-		next(err);
+	if (song == null) {
+		res.status(404);
+		res.end();
+		return;
 	}
+
+	res.json(song);
 });
 
 router.get("/changes", async (req, res, _next) => {

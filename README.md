@@ -44,6 +44,37 @@ Access the player from any device.
 - Searching
 - Marker
 
+## 🪛 Server setup
+
+1. Clone the repository:
+
+   ```bash
+   git clone git@github.com/oSumAtrIX/osum-player
+   cd osum-player/server
+   ```
+
+2. Migrate the database:
+
+   ```bash
+   npx prisma migrate deploy
+   ```
+
+3. Configure environment variables using `env.example`:
+
+   ```env
+   SERVER_PORT=3000
+   SONGS_PATH=songs/
+   SONGS_PER_OFFSET=32
+   DATABASE_URL="file:./database.db?connection_limit=1"
+   IMAGE_CACHE_PATH=cache/
+   ```
+
+4. Start the server
+
+   ```bash
+   npm start
+   ```
+
 ## ⌨️ Keybinds
 
 - `CTRL+A`: Toggle autoplay
@@ -75,14 +106,15 @@ Play with the album cover.
 ## 📝 Todo
 
 - [x] Backend server
-- [ ] Keybinds menu
 - [x] Adjusting volume with keybinds
+- [x] Sort by newest modification date
+- [x] Marker
+- [x] Various play modes
+- [ ] Last.FM integration
+- [ ] Keybinds menu
 - [ ] Playlists
 - [ ] Queues
 - [ ] Sync live changes
 - [ ] Rainbow seekbar
-- [x] Sort by newest modification date
-- [ ] Shuffle
-- [ ] Marker
 - [ ] Global hotkeys
 - [ ] Add new audio files with drag & drop
