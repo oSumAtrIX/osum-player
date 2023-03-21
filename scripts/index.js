@@ -154,8 +154,9 @@ class SeekbarManager {
 				this.lastProgressX = e.clientX;
 			}
 
-			const calculateProgress = (e) => e.clientX / this.seekbar.offsetWidth;
-			AudioManager.setProgress(calculateProgress(e));
+			const calculateProgress = e.clientX / this.seekbar.offsetWidth;
+			SeekbarManager.setProgress(calculateProgress);
+			AudioManager.setProgress(calculateProgress);
 
 			PopupManager.showPopup(this.currentTimeText.innerText, 300);
 		};
@@ -612,6 +613,8 @@ class SongManager {
 		return this.image;
 	}
 
+	// TODO: this method adds songs to the song list, when new songs are loaded
+	//  Order of songs is not guaranteed, this should be fixed.
 	static async getSongs(ids) {
 		const songs = [];
 
