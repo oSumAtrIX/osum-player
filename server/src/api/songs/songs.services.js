@@ -155,9 +155,9 @@ export function findSongIdsByQuery(query, limit, offset, orderByModifiedDate) {
 	const args = {
 		where: {
 			OR: [
-				{ title: { contains: query, mode: "insensitive" } },
-				{ artist: { contains: query, mode: "insensitive" } },
-				{ filename: { contains: query, mode: "insensitive" } },
+				{ title: { contains: query } },
+				{ artist: { contains: query } },
+				{ filename: { contains: query } },
 			],
 		},
 		take: limit,
@@ -377,8 +377,8 @@ async function parseSongFromFile(name, getImage = false) {
 
 			const picture = metadata.common.picture;
 
-			if (!getImage) song.image = picture != null;
-			else if (picture) song.image = picture[0].data;
+			if (getImage) song.image = picture[0].data;
+			else song.image = picture != null;
 
 			resolve(song);
 		});
