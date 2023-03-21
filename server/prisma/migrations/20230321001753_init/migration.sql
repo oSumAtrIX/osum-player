@@ -4,14 +4,15 @@ CREATE TABLE "Song" (
     "title" TEXT,
     "artist" TEXT,
     "filename" TEXT NOT NULL,
-    "image" BLOB
+    "image" BOOLEAN NOT NULL,
+    "modified" DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 
 -- CreateTable
 CREATE TABLE "Marker" (
     "id" INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
     "songId" INTEGER NOT NULL,
-    "time" INTEGER NOT NULL,
+    "marker" REAL NOT NULL,
     CONSTRAINT "Marker_songId_fkey" FOREIGN KEY ("songId") REFERENCES "Song" ("id") ON DELETE RESTRICT ON UPDATE CASCADE
 );
 
