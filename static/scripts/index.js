@@ -135,13 +135,17 @@ class SeekbarManager {
 			"#seekbar-current-song-duration-text",
 			this.currentTime
 		);
+
 		this.isMouseOverSeekbarProp = false;
+
 		this.markerHoverStyle = document.createElement("style");
 		this.markerHoverStyle.type = "text/css";
 		this.markerHoverStyle.innerHTML = `.marker {
 			 height: 15px !important; 
 			 box-shadow: 0 0 20px 3px var(--highlight-yellow) !important;
 			}`;
+
+		this.seekbarShrunken = true;
 
 		// the last x position of the mouse on the seekbar
 		this.lastProgressX = 0;
@@ -257,21 +261,29 @@ class SeekbarManager {
 	}
 
 	static enlargeSeekbar() {
+		if (!this.seekbarShrunken) return;
+
 		this.currentTime.classList.add("current-time-active");
 		this.knobCircle.classList.add("knob-circle-active");
 		this.knob.classList.add("knob-hover");
 		this.progress.classList.add("seekbar-hover");
 
 		this.seekbar.appendChild(this.markerHoverStyle);
+
+		this.seekbarShrunken = false;
 	}
 
 	static shrinkSeekbar() {
+		if (this.seekbarShrunken) return;
+
 		this.currentTime.classList.remove("current-time-active");
 		this.knobCircle.classList.remove("knob-circle-active");
 		this.knob.classList.remove("knob-hover");
 		this.progress.classList.remove("seekbar-hover");
 
 		this.seekbar.removeChild(this.markerHoverStyle);
+
+		this.seekbarShrunken = true;
 	}
 
 	static formatMinutes(time) {
@@ -285,6 +297,9 @@ class SeekbarManager {
 	 * @param {number} progress The progress in the range [0, 1].
 	 */
 	static setProgress(progress) {
+		if (progress < 0) progress = 0;
+		if (progress > 1) progress = 1;
+		
 		this.progress.style.width = progress * 100 + "%";
 
 		const currentTime = AudioManager.getDuration() * progress;
@@ -322,10 +337,10 @@ class EventManager {
 
 						return;
 					case "ArrowUp":
-						SongManager.playPrevious();
+						SongManager.selectPrevious();
 						return;
 					case "ArrowDown":
-						SongManager.playNext();
+						SongManager.selectNext();
 						return;
 					case "Space":
 						AudioManager.toggle();
@@ -403,6 +418,13 @@ class EventManager {
 		document.onkeyup = (e) => {
 			if (e.code == "ShiftLeft") this.shift = false;
 			if (e.code == "ControlLeft") this.control = false;
+
+			if (
+				(!SearchManager.isActive() && e.code == "ArrowUp") ||
+				e.code == "ArrowDown"
+			) {
+				SongManager.playCurrentSongItem();
+			}
 		};
 
 		document.oncontextmenu = (e) => e.preventDefault();
@@ -558,13 +580,17 @@ class SongManager {
 
 		this.offset = 0;
 
+		this.selectPrevNextWaitTime = 100;
+
 		this.sortByModifiedDate =
 			localStorage.getItem("sortByModifiedDate") || false;
 
 		// handle song playback
 		this.songList.onclick = (e) => {
 			if (e.target.classList.contains("song-item")) {
+				this.setActive(e.target);
 				this.playSongItem(e.target);
+				this.scrollToCurrentSongItem();
 			}
 		};
 
@@ -684,7 +710,7 @@ class SongManager {
 
 		AudioManager.setSong(this.currentSong);
 		AudioManager.play();
-		
+
 		// instantly update seekbar
 		SeekbarManager.setProgress(0);
 	}
@@ -696,12 +722,15 @@ class SongManager {
 	}
 
 	static playSongItem(songItem) {
-		if (!songItem) return;
-
 		this.playSongId(songItem.id);
-		this.setActive(songItem);
+	}
 
-		songItem.scrollIntoViewIfNeeded(true);
+	static scrollToCurrentSongItem() {
+		this.currentSongItem.scrollIntoView({
+			behavior: "smooth",
+			block: "center",
+			inline: "center",
+		});
 	}
 
 	static getCurrentSong() {
@@ -724,7 +753,13 @@ class SongManager {
 		this.setActive(songItem);
 	}
 
-	static playNext() {
+	static selectNext() {
+		if (Date.now() - this.selectNextTimeout < this.selectPrevNextWaitTime)
+			return;
+		this.selectNextTimeout = Date.now();
+
+		AudioManager.pauseImage();
+
 		let next;
 		if (this.currentSongItem) {
 			next = this.currentSongItem.nextElementSibling;
@@ -735,10 +770,22 @@ class SongManager {
 			next = this.songList.firstElementChild;
 		}
 
-		this.playSongItem(next);
+		this.setActive(next);
+		this.scrollToCurrentSongItem();
 	}
 
-	static playPrevious() {
+	static selectNextAndPlay() {
+		this.selectNext();
+		this.playCurrentSongItem();
+	}
+
+	static selectPrevious() {
+		if (Date.now() - this.selectPreviousTimeout < this.selectPrevNextWaitTime)
+			return;
+		this.selectPreviousTimeout = Date.now();
+
+		AudioManager.pauseImage();
+
 		let next;
 		if (this.currentSongItem) {
 			next = this.currentSongItem.previousElementSibling;
@@ -747,7 +794,12 @@ class SongManager {
 			next = this.songList.lastElementChild;
 		}
 
-		this.playSongItem(next);
+		this.setActive(next);
+		this.scrollToCurrentSongItem();
+	}
+
+	static playCurrentSongItem() {
+		this.playSongItem(this.currentSongItem);
 	}
 
 	static createSongItem(song) {
@@ -773,13 +825,35 @@ class AudioManager {
 		this.songAudio = new Audio();
 		this.interactionAudio = new Audio("assets/interaction.wav");
 		this.interactionAudio.volume = 0;
+		this.imagePaused = false;
 
 		this.setVolume(localStorage.getItem("volume") || 50);
 
+		// update image on audio events
+
+		// when a song is loaded, readyState is 0, so pause the image
+		// otherwise resume the image
+		this.songAudio.onplay = () => {
+			if (this.songAudio.readyState == 0) this.pauseImage();
+			else this.resumeImage();
+		};
+
+		// when a song is loaded, so resume the image,
+		// this is needed because when a song is loaded, readyState is 0 and
+		// the image is paused, so we need to resume it once the song is loaded
+		this.songAudio.addEventListener("loadedmetadata", () => this.resumeImage());
+
+		// when a song is paused, so pause the image
+		this.songAudio.onpause = () => this.pauseImage();
+
+		// when a song is ended, so pause the image
+		this.songAudio.onended = () => this.pauseImage();
+
 		// update seekbar on audio events
 
-		this.songAudio.onloadedmetadata = () =>
-			SeekbarManager.setDuration(this.getDuration());
+		this.songAudio.addEventListener("loadedmetadata", () =>
+			SeekbarManager.setDuration(this.getDuration())
+		);
 
 		this.songAudio.ontimeupdate = () => {
 			if (this.songAudio.readyState > 0)
@@ -789,7 +863,7 @@ class AudioManager {
 		this.songAudio.onended = async () => {
 			switch (PlayModeManager.getCurrentPlayMode()) {
 				case PlayModeManager.AUTOPLAY:
-					SongManager.playNext();
+					SongManager.selectNextAndPlay();
 					break;
 				case PlayModeManager.RANDOM:
 					const song = await ApiManager.getRandomSong();
@@ -810,11 +884,19 @@ class AudioManager {
 	}
 
 	static pauseImage() {
+		if (this.imagePaused) return;
+
 		SongManager.getImage().classList.add("image-paused");
+
+		this.imagePaused = true;
 	}
 
 	static resumeImage() {
+		if (!this.imagePaused) return;
+
 		SongManager.getImage().classList.remove("image-paused");
+
+		this.imagePaused = false;
 	}
 
 	static playInteractionAudio(wait = 0) {
@@ -848,9 +930,7 @@ class AudioManager {
 
 	static play() {
 		if (this.songAudio.src) this.songAudio.play();
-		else SongManager.playNext();
-
-		this.resumeImage();
+		else SongManager.selectNextAndPlay();
 	}
 
 	static getVolume() {
@@ -881,8 +961,6 @@ class AudioManager {
 	}
 
 	static pause() {
-		this.pauseImage();
-
 		this.songAudio.pause();
 	}
 
