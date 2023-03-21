@@ -50,11 +50,12 @@ router.post("/", async (req, res, _next) => {
 	}
 });
 
-router.post("/reload", async (_req, res, next) => {
+router.post("/reload", async (req, res, next) => {
 	const start = Date.now();
 
+	const full = req.query.hasOwnProperty("full");
 	try {
-		await reload();
+		await reload(full);
 	} catch (err) {
 		return next(err);
 	}

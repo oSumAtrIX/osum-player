@@ -21,5 +21,5 @@ model Marker {
     id     Int   @id @default(autoincrement())
     songId Int
     marker Float
-    song   Song  @relation(fields: [songId], references: [id])
+    song   Song  @relation(fields: [songId], references: [id], onDelete: Cascade)
 }

@@ -295,6 +295,22 @@ function deleteCache(song) {
 	deleteFile(getImagePath(song.filename, true));
 }
 
+function resetCache() {
+	return new Promise((resolve, reject) =>
+		fs.readdir(process.env.IMAGE_CACHE_PATH, (err, files) => {
+			if (err) throw err;
+
+			for (const file of files) {
+				fs.unlink(path.join(process.env.IMAGE_CACHE_PATH, file), (err) => {
+					if (err) throw err;
+				});
+			}
+
+			resolve();
+		})
+	);
+}
+
 function deleteFile(file) {
 	if (fileExists(file)) {
 		fs.unlink(file);
@@ -377,7 +393,7 @@ async function parseSongFromFile(name, getImage = false) {
 
 			const picture = metadata.common.picture;
 
-			if (getImage) song.image = picture[0].data;
+			if (getImage && picture) song.image = picture[0].data;
 			else song.image = picture != null;
 
 			resolve(song);
@@ -504,8 +520,14 @@ async function findOrphanedSongs(filenames) {
 /**
  * Reloads the database with the songs in the songs folder.
  * It will add songs that are missing and remove songs that are orphaned.
+ * @param {boolean} full Whether to delete all songs before reloading.
  */
-export async function reload() {
+export async function reload(full = false) {
+	if (full) {
+		await db.song.deleteMany({});
+		resetCache();
+	}
+
 	const songNames = await getFileNamesFromPath();
 
 	const missingSongs = await findMissingSongs(songNames);
