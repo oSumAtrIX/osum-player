@@ -614,7 +614,7 @@ class SongManager {
 	}
 
 	// TODO: this method adds songs to the song list, when new songs are loaded
-	//  Order of songs is not guaranteed, this should be fixed.
+	//  order of songs is not guaranteed, this should be fixed
 	static async getSongs(ids) {
 		const songs = [];
 
@@ -684,6 +684,9 @@ class SongManager {
 
 		AudioManager.setSong(this.currentSong);
 		AudioManager.play();
+		
+		// instantly update seekbar
+		SeekbarManager.setProgress(0);
 	}
 
 	static playSongId(id) {
