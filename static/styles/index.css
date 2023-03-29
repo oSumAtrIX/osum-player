@@ -209,7 +209,6 @@
 	background-color: var(--highlight);
 	box-shadow: 0 0 30px 0 var(--highlight-darker);
 	height: 5px;
-	transition: height .2s
 }
 
 #seekbar-time-separator {
@@ -256,6 +255,11 @@
 
 .knob-hover {
 	opacity: 100% !important
+}
+
+.marker,
+#seekbar-progress {
+	transition: height .2s;
 }
 
 .marker {
