@@ -1,5 +1,4 @@
-import { parse } from "dotenv";
-import { query, Router } from "express";
+import { Router } from "express";
 import {
 	findSongs,
 	getSongFile,

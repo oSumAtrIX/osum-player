@@ -7,8 +7,8 @@ import chokidar from "chokidar";
 import parsePath from "parse-filepath";
 import fs from "fs";
 import sha1 from "sha1";
+import config from "../../config.js";
 
-const songsPerOffset = parseInt(process.env.SONGS_PER_OFFSET);
 let watcher = null;
 
 // TODO: Watch on startup of server if enabled previously by saving when enabling and by env variable.
@@ -20,7 +20,7 @@ export function watch() {
 
 	const getBaseName = (file) => parsePath(file).basename;
 
-	watcher = chokidar.watch(process.env.SONGS_PATH, {
+	watcher = chokidar.watch(config.SONGS_PATH, {
 		ignoreInitial: true,
 		awaitWriteFinish: {
 			stabilityThreshold: 2000,
@@ -98,7 +98,7 @@ export async function getSongFile(id) {
 
 	if (song === null) return null;
 
-	return path.join(process.env.SONGS_PATH, song.filename);
+	return path.join(config.SONGS_PATH, song.filename);
 }
 
 /**
@@ -110,7 +110,7 @@ export async function getSongFile(id) {
  */
 function getImagePath(filename, full = false) {
 	const imageName = sha1(filename + (full ? "_full" : ""));
-	return path.join(process.env.IMAGE_CACHE_PATH, imageName);
+	return path.join(config.IMAGE_CACHE_PATH, imageName);
 }
 
 export async function getSongImage(id, full = false) {
@@ -183,7 +183,7 @@ export function findSongIdsByQuery(query, limit, offset, orderByModifiedDate) {
 export function findIdsByOffset(offset) {
 	const args = {
 		where: { id: { gte: offset } },
-		take: songsPerOffset,
+		take: config.SONGS_PER_OFFSET,
 		select: {
 			id: true,
 		},
@@ -202,8 +202,8 @@ export function findIdsByModifiedDate(page) {
 		orderBy: {
 			modified: "desc",
 		},
-		skip: songsPerOffset * page,
-		take: songsPerOffset,
+		skip: config.SONGS_PER_OFFSET * page,
+		take: config.SONGS_PER_OFFSET,
 		select: {
 			id: true,
 		},
@@ -296,12 +296,12 @@ function deleteCache(song) {
 }
 
 function resetCache() {
-	return new Promise((resolve, reject) =>
-		fs.readdir(process.env.IMAGE_CACHE_PATH, (err, files) => {
+	return new Promise((resolve, _) =>
+		fs.readdir(config.IMAGE_CACHE_PATH, (err, files) => {
 			if (err) throw err;
 
 			for (const file of files) {
-				fs.unlink(path.join(process.env.IMAGE_CACHE_PATH, file), (err) => {
+				fs.unlink(path.join(config.IMAGE_CACHE_PATH, file), (err) => {
 					if (err) throw err;
 				});
 			}
@@ -313,7 +313,7 @@ function resetCache() {
 
 function deleteFile(file) {
 	if (fileExists(file)) {
-		fs.unlink(file);
+		fs.unlink(file, () => { });
 	}
 }
 
@@ -375,7 +375,7 @@ function findByFilename(name) {
  * @param {boolean} getImage Whether to return the image. If false, only the information if the song has an image is returned.
  */
 async function parseSongFromFile(name, getImage = false) {
-	const songPath = path.join(process.env.SONGS_PATH, name);
+	const songPath = path.join(config.SONGS_PATH, name);
 
 	let metadata = await parseFile(songPath, { skipCovers: !getImage });
 
@@ -415,7 +415,7 @@ async function compressImage(image, size = 64) {
 function getFileNamesFromPath() {
 	return new Promise((resolve, reject) =>
 		fs.readdir(
-			process.env.SONGS_PATH,
+			config.SONGS_PATH,
 			{ withFileTypes: true },
 			(err, files) => {
 				if (err) return reject(err);

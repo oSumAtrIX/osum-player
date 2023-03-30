@@ -1,9 +1,6 @@
 import express, { json } from "express";
 import morgan from "morgan";
 import cors from "cors";
-import dotenv from "dotenv";
-
-dotenv.config();
 
 import { notFound, errorHandler } from "./middlewares.js";
 import api from "./api/index.js";
