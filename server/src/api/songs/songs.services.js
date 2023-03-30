@@ -377,7 +377,7 @@ function findByFilename(name) {
 async function parseSongFromFile(name, getImage = false) {
 	const songPath = path.join(config.SONGS_PATH, name);
 
-	let metadata = await parseFile(songPath, { skipCovers: !getImage });
+	let metadata = await parseFile(songPath);
 
 	return new Promise((resolve, reject) => {
 		fs.stat(songPath, (err, stats) => {
