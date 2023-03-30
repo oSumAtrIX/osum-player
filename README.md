@@ -4,7 +4,7 @@ A music player built in vanilla web technologies out of the need of a good music
 
 ## 🔬 Demo
 
-Will be added soon
+Visit [music.osumatrix.me](https://music.osumatrix.me/) for a demo!
 
 ## 🖼️ Previews
 
