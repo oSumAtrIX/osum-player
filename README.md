@@ -53,13 +53,18 @@ Access the player from any device.
    cd osum-player/server
    ```
 
-2. Migrate the database:
+2. Install dependencies
+
+   1. Install libjpeg development package if you are on Linux
+   2. Run `npm i`
+
+3. Migrate the database:
 
    ```bash
    npx prisma migrate deploy
    ```
 
-3. Configure environment variables using `env.example`:
+4. Configure environment variables using `env.example`:
 
    ```env
    SERVER_PORT=3000
@@ -69,7 +74,7 @@ Access the player from any device.
    IMAGE_CACHE_PATH=cache/
    ```
 
-4. Start the server
+5. Start the server
 
    ```bash
    npm start
