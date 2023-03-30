@@ -299,7 +299,6 @@ class SeekbarManager {
 	static setProgress(progress) {
 		if (progress < 0) progress = 0;
 		if (progress > 1) progress = 1;
-		
 		this.progress.style.width = progress * 100 + "%";
 
 		const currentTime = AudioManager.getDuration() * progress;
@@ -384,6 +383,11 @@ class EventManager {
 							PlayModeManager.rotatePlayMode();
 							return;
 						}
+					case "KeyD":
+						// TODO: Remove this once not needed anymore
+						e.preventDefault();
+						ApiManager.useLocalEndpoint();
+						return;
 				}
 			}
 
@@ -434,7 +438,7 @@ class EventManager {
 class ApiManager {
 	static {
 		this.apiVersion = 1;
-		this.endpoint = localStorage.getItem("endpoint") || "http://localhost:3000"; // TODO: add ability to configure in frontend
+		this.endpoint = localStorage.getItem("endpoint") || this.useDemoEndpoint();
 
 		this.sendOption = (method = "POST") => ({
 			method,
@@ -446,10 +450,22 @@ class ApiManager {
 		Song.setApi(`${this.getApi()}/songs`);
 	}
 
+	static useLocalEndpoint() {
+		this.setEndpoint("http://localhost:3000");
+	}
+
+	static useDemoEndpoint() {
+		this.setEndpoint("https://demomusicapi.osumatrix.me");
+	}
+
 	static setEndpoint(endpoint) {
+		if (this.endpoint == endpoint) return;
+
 		this.endpoint = endpoint;
 
 		localStorage.setItem("endpoint", endpoint);
+
+		PopupManager.showPopup(endpoint);
 	}
 
 	// TODO: implement frontend for this
@@ -600,7 +616,7 @@ class SongManager {
 				if (
 					e.target.scrollTop + e.target.clientHeight >=
 					e.target.scrollHeight -
-						(e.target.scrollHeight - e.target.scrollTop) / 2
+					(e.target.scrollHeight - e.target.scrollTop) / 2
 				)
 					SongManager.getNewSongs();
 			}, 5);
