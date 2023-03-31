@@ -386,7 +386,7 @@ class EventManager {
 					case "KeyD":
 						// TODO: Remove this once not needed anymore
 						e.preventDefault();
-						ApiManager.useLocalEndpoint();
+						ApiManager.rotateEndpoint();
 						return;
 				}
 			}
@@ -438,7 +438,12 @@ class EventManager {
 class ApiManager {
 	static {
 		this.apiVersion = 1;
-		this.endpoint = localStorage.getItem("endpoint") || this.useDemoEndpoint();
+
+		this.defaultEndpoints = ["https://demomusicapi.osumatrix.me", "http://localhost:3000"];
+		this.endpoints = this.loadEndpoints() || this.defaultEndpoints;
+		this.currentEndpoint = this.getCurrentEndpoint();
+
+		this.currentEndpointIndex = 0;
 
 		this.sendOption = (method = "POST") => ({
 			method,
@@ -450,20 +455,49 @@ class ApiManager {
 		Song.setApi(`${this.getApi()}/songs`);
 	}
 
-	static useLocalEndpoint() {
-		this.setEndpoint("http://localhost:3000");
+	// TODO: Add frontend for this
+	static saveEndpoints() {
+		localStorage.setItem("endpoints", JSON.parse(this.endpoints));
 	}
 
-	static useDemoEndpoint() {
-		this.setEndpoint("https://demomusicapi.osumatrix.me");
+	static loadEndpoints() {
+		const endpoints = localStorage.getItem("endpoints");
+		if (endpoints == null) return null;
+
+		this.endpoints = JSON.parse(localStorage.getItem("endpoints"));
+	}
+
+	// TODO: Add frontend for this
+	static addEndpoint(endpoint) {
+		this.endpoints.push(endpoint);
+		this.saveEndpoints();
+	}
+
+	// TODO: Add frontend for this
+	static resetEndpoints() {
+		this.endpoints = this.defaultEndpoints;
+	}
+
+	static rotateEndpoint() {
+		this.currentEndpointIndex = (this.currentEndpointIndex + 1) % this.endpoints.length;
+
+		this.setEndpoint(this.endpoints[this.currentEndpointIndex]);
+		this.saveCurrentEndpoint();
+	}
+
+	static getCurrentEndpoint() {
+		const endpoint = localStorage.getItem("currentEndpoint");
+		return endpoint == null ? this.endpoints[0] : endpoint;
+	}
+
+	static saveCurrentEndpoint() {
+		localStorage.setItem("currentEndpoint", this.currentEndpoint);
 	}
 
 	static setEndpoint(endpoint) {
-		if (this.endpoint == endpoint) return;
+		if (this.currentEndpoint == endpoint) return;
 
-		this.endpoint = endpoint;
-
-		localStorage.setItem("endpoint", endpoint);
+		this.currentEndpoint = endpoint;
 
 		PopupManager.showPopup(endpoint);
 	}
@@ -540,7 +574,7 @@ class ApiManager {
 	}
 
 	static getApi() {
-		return `${this.endpoint}/api/v${this.apiVersion}`;
+		return `${this.currentEndpoint}/api/v${this.apiVersion}`;
 	}
 
 	static async request(api, options) {
