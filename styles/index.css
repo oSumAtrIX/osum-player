@@ -78,7 +78,6 @@
 
 #image {
 	border-radius: 10px;
-	box-shadow: 0 0 100px 0 var(--image-shadow);
 	transition: transform 0.5s, scale 1s, filter 0.2s;
 	-webkit-user-drag: none;
 	max-height: 50%;
