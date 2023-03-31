@@ -316,6 +316,11 @@ class SeekbarManager {
 class EventManager {
 	static {
 		document.onkeydown = (e) => {
+			if (e.code == "Space") {
+				if (this.space) return;
+				this.space = true;
+			}
+
 			if (e.code == "ShiftLeft") this.shift = true;
 			if (e.code == "ControlLeft") this.control = true;
 
@@ -420,9 +425,9 @@ class EventManager {
 		};
 
 		document.onkeyup = (e) => {
+			if (e.code == "Space") this.space = false;
 			if (e.code == "ShiftLeft") this.shift = false;
 			if (e.code == "ControlLeft") this.control = false;
-
 			if (
 				(!SearchManager.isActive() && e.code == "ArrowUp") ||
 				e.code == "ArrowDown"
