@@ -149,16 +149,16 @@ class SeekbarManager {
 
 		// the last x position of the mouse on the seekbar
 		this.lastProgressX = 0;
-		const setProgress = (e) => {
-			if (e.timeStamp - this.lastSetProgressCall < 4) return;
-			this.lastSetProgressCall = e.timeStamp;
+		const setProgress = (touch) => {
+			if (touch.time - this.lastSetProgressCall < 4) return;
+			this.lastSetProgressCall = touch.time;
 
-			if (Math.abs(this.lastProgressX - e.clientX) > 20) {
+			if (Math.abs(this.lastProgressX - touch.x) > 20) {
 				AudioManager.playInteractionAudio(60);
-				this.lastProgressX = e.clientX;
+				this.lastProgressX = touch.x;
 			}
 
-			const calculateProgress = e.clientX / this.seekbar.offsetWidth;
+			const calculateProgress = touch.x / this.seekbar.offsetWidth;
 			SeekbarManager.setProgress(calculateProgress);
 			AudioManager.setProgress(calculateProgress);
 
@@ -171,20 +171,19 @@ class SeekbarManager {
 
 		let mouseDownOriginIsSeekbar = false;
 
-		this.seekbar.onmousedown = (e) => {
-			// prevent selecting anything on screen
-			e.preventDefault();
+		const onSeek = (time, x) => {
 			mouseDownOriginIsSeekbar = true;
 
 			AudioManager.pause();
 
-			(document.onmousemove = setProgress)(e);
+			(document.onmousemove = setProgress)({ time, x });
 		};
-		document.onmouseup = (e) => {
+
+		const onSeekStop = (time, x) => {
 			if (!mouseDownOriginIsSeekbar) return;
 			mouseDownOriginIsSeekbar = false;
 
-			setProgress(e);
+			setProgress({ time, x });
 			AudioManager.play();
 
 			// if the mouse is over the seekbar, keep the hover effect
@@ -193,20 +192,40 @@ class SeekbarManager {
 			document.onmousemove = null;
 		};
 
+		const isTouchDevice = 'ontouchstart' in window;
+
+		if (isTouchDevice) {
+			this.seekbar.ontouchstart = (e) => onSeek(e.timeStamp, e.changedTouches[0].clientX);
+			this.seekbar.addEventListener("touchmove", this.seekbar.ontouchstart);
+
+			this.seekbar.addEventListener("touchend", (e) => onSeekStop(e.timeStamp, e.changedTouches[0].clientX));
+		} else {
+			this.seekbar.onmousedown = (e) => onSeek(e.timeStamp, e.clientX);
+			document.onmouseup = (e) => onSeekStop(e.timeStamp, e.clientX);
+		}
+
 		// hover effect
 
-		this.seekbar.onmouseenter = () => {
+		const onHover = () => {
 			this.isMouseOverSeekbarProp = true;
 			this.enlargeSeekbar();
 		};
 
-		this.seekbar.onmouseleave = () => {
+		const onHoverStop = () => {
 			this.isMouseOverSeekbarProp = false;
 
 			// if the mouse is currently down on seekbar, do not the remove hover effect
 			if (!mouseDownOriginIsSeekbar && !AudioManager.isPaused())
 				this.shrinkSeekbar();
 		};
+
+		if (isTouchDevice) {
+			this.seekbar.addEventListener("touchmove", onHover)
+			this.seekbar.addEventListener("touchend", onHoverStop)
+		} else {
+			this.seekbar.onmouseenter = onHover;
+			this.seekbar.onmouseleave = onHoverStop;
+		}
 	}
 
 	static loadMarkers() {
@@ -1257,11 +1276,11 @@ class AnimationManager {
 
 		let time = 0;
 		this.breathingAnimation = () => {
-			if (AnimationManager.isMouseOnImage || AudioManager.isPaused()) return;
+			if (this.isMouseOnImage || AudioManager.isPaused()) return;
 
 			time += 0.2;
 
-			AnimationManager.animateImage(
+			this.animateImage(
 				Math.sin(time) * 50,
 				Math.cos(time / 2) * 50
 			);
@@ -1275,33 +1294,68 @@ class AnimationManager {
 			const x = e.pageX - position.left - position.width / 2;
 			const y = e.pageY - position.top - position.height / 2;
 
-			AnimationManager.animateImage(x, y);
+			this.animateImage(x, y);
 		};
+
 		this.imageOnMouseOut = () => {
 			image.style.transform = "translate(0px, 0px)";
 		};
 
-		image.onmouseenter = () => (AnimationManager.isMouseOnImage = true);
-		image.onmouseleave = () => (AnimationManager.isMouseOnImage = false);
+		this.imageOnMouseMoveTouch = (e) => this.imageOnMouseMove(this.transformTouchEvent(e));
+		this.imageOnMouseMoveOutTouch = (e) => this.imageOnMouseOut(this.transformTouchEvent(e));
+
+		const setMouseOnImageTrue = () => (this.isMouseOnImage = true);
+		const setMouseOnImageFalse = () => (this.isMouseOnImage = false);
+
+		this.isTouchDevice = "ontouchstart" in window;
+
+		if (this.isTouchDevice) {
+			this.image.addEventListener("touchstart", setMouseOnImageTrue);
+			this.image.addEventListener("touchend", setMouseOnImageFalse);
+		} else {
+			image.onmouseenter = setMouseOnImageTrue
+			image.onmouseleave = setMouseOnImageFalse
+		}
 
 		if (this.animationsEnabled) this.start();
 	}
 
 	static stop() {
-		AnimationManager.imageOnMouseOut();
+		this.imageOnMouseOut();
 
-		AnimationManager.image.onmousemove = null;
-		AnimationManager.image.onmouseout = null;
-		clearInterval(AnimationManager.breathingAnimationInterval);
+		if (this.isTouchDevice) {
+			this.image.removeEventListener("touchmove", this.imageOnMouseMoveTouch);
+			this.image.removeEventListener("touchend", this.imageOnMouseMoveOutTouch);
+		} else {
+			this.image.onmousemove = null;
+			this.image.onmouseout = null;
+		}
+
+		clearInterval(this.breathingAnimationInterval);
+	}
+
+	static transformTouchEvent(e) {
+		const changedTouches = e.changedTouches[0];
+
+		return {
+			pageX: changedTouches.pageX,
+			pageY: changedTouches.pageY,
+			timeStamp: e.timeStamp
+		}
 	}
 
 	static start() {
-		AnimationManager.stop();
+		this.stop();
 
-		AnimationManager.image.onmousemove = AnimationManager.imageOnMouseMove;
-		AnimationManager.image.onmouseout = AnimationManager.imageOnMouseOut;
-		AnimationManager.breathingAnimationInterval = setInterval(
-			AnimationManager.breathingAnimation,
+		if (this.isTouchDevice) {
+			this.image.ontouchmove = this.imageOnMouseMoveTouch;
+			this.image.addEventListener("touchend", this.imageOnMouseMoveOutTouch);
+		} else {
+			this.image.onmousemove = this.imageOnMouseMove;
+			this.image.onmouseout = this.imageOnMouseOut;
+		}
+		this.breathingAnimationInterval = setInterval(
+			this.breathingAnimation,
 			1000 / 4
 		);
 	}
