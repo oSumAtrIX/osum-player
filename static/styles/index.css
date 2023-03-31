@@ -167,6 +167,10 @@
 	z-index: 2
 }
 
+.seekbar-hidden {
+	display: none !important;
+}
+
 #seekbar-current-song-duration-text,
 .song-artist {
 	color: var(--secondary)

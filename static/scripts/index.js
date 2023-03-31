@@ -252,6 +252,20 @@ class SeekbarManager {
 			.forEach((marker) => marker.remove());
 	}
 
+	static hideSeekbar() {
+		if (!this.seekbarShowing) return;
+		this.seekbarShowing = false;
+
+		this.seekbar.classList.add("seekbar-hidden");
+	}
+
+	static showSeekbar() {
+		if (this.seekbarShowing) return;
+		this.seekbarShowing = true;
+
+		this.seekbar.classList.remove("seekbar-hidden");
+	}
+
 	static getSeekbar() {
 		return this.seekbar;
 	}
@@ -667,7 +681,7 @@ class SongManager {
 
 		this.getNewSongs().catch((_) => {
 			PopupManager.showPopup("Disconnected", 60 * 1000);
-		});
+		})
 	}
 
 	static isSortedByModifiedDate() {
@@ -775,6 +789,7 @@ class SongManager {
 
 		// instantly update seekbar
 		SeekbarManager.setProgress(0);
+		SeekbarManager.showSeekbar();
 	}
 
 	static playSongId(id) {
