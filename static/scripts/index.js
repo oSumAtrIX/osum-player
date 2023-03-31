@@ -695,10 +695,17 @@ class SongManager {
 	}
 
 	static async getNewSongs() {
+		if (this.offset == -1) return; // no more songs to load (end of list
+
 		const ids = await ApiManager.getSongIds(
 			this.offset,
 			this.sortByModifiedDate
 		);
+
+		if (ids.length == 0) {
+			this.offset = -1; // no more songs to load (end of list)
+			return;
+		}
 
 		this.offset = this.sortByModifiedDate
 			? this.offset + 1 // if sorting by modified date, paginate by 1
