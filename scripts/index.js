@@ -149,16 +149,16 @@ class SeekbarManager {
 
 		// the last x position of the mouse on the seekbar
 		this.lastProgressX = 0;
-		const setProgress = (e) => {
-			if (e.timeStamp - this.lastSetProgressCall < 4) return;
-			this.lastSetProgressCall = e.timeStamp;
+		const setProgress = (touch) => {
+			if (touch.time - this.lastSetProgressCall < 4) return;
+			this.lastSetProgressCall = touch.time;
 
-			if (Math.abs(this.lastProgressX - e.clientX) > 20) {
+			if (Math.abs(this.lastProgressX - touch.x) > 20) {
 				AudioManager.playInteractionAudio(60);
-				this.lastProgressX = e.clientX;
+				this.lastProgressX = touch.x;
 			}
 
-			const calculateProgress = e.clientX / this.seekbar.offsetWidth;
+			const calculateProgress = touch.x / this.seekbar.offsetWidth;
 			SeekbarManager.setProgress(calculateProgress);
 			AudioManager.setProgress(calculateProgress);
 
@@ -171,20 +171,19 @@ class SeekbarManager {
 
 		let mouseDownOriginIsSeekbar = false;
 
-		this.seekbar.onmousedown = (e) => {
-			// prevent selecting anything on screen
-			e.preventDefault();
+		const onSeek = (time, x) => {
 			mouseDownOriginIsSeekbar = true;
 
 			AudioManager.pause();
 
-			(document.onmousemove = setProgress)(e);
+			(document.onmousemove = setProgress)({ time, x });
 		};
-		document.onmouseup = (e) => {
+
+		const onSeekStop = (time, x) => {
 			if (!mouseDownOriginIsSeekbar) return;
 			mouseDownOriginIsSeekbar = false;
 
-			setProgress(e);
+			setProgress({ time, x });
 			AudioManager.play();
 
 			// if the mouse is over the seekbar, keep the hover effect
@@ -193,20 +192,40 @@ class SeekbarManager {
 			document.onmousemove = null;
 		};
 
+		const isTouchDevice = 'ontouchstart' in window;
+
+		if (isTouchDevice) {
+			this.seekbar.ontouchstart = (e) => onSeek(e.timeStamp, e.changedTouches[0].clientX);
+			this.seekbar.addEventListener("touchmove", this.seekbar.ontouchstart);
+
+			this.seekbar.addEventListener("touchend", (e) => onSeekStop(e.timeStamp, e.changedTouches[0].clientX));
+		} else {
+			this.seekbar.onmousedown = (e) => onSeek(e.timeStamp, e.clientX);
+			document.onmouseup = (e) => onSeekStop(e.timeStamp, e.clientX);
+		}
+
 		// hover effect
 
-		this.seekbar.onmouseenter = () => {
+		const onHover = () => {
 			this.isMouseOverSeekbarProp = true;
 			this.enlargeSeekbar();
 		};
 
-		this.seekbar.onmouseleave = () => {
+		const onHoverStop = () => {
 			this.isMouseOverSeekbarProp = false;
 
 			// if the mouse is currently down on seekbar, do not the remove hover effect
 			if (!mouseDownOriginIsSeekbar && !AudioManager.isPaused())
 				this.shrinkSeekbar();
 		};
+
+		if (isTouchDevice) {
+			this.seekbar.addEventListener("touchmove", onHover)
+			this.seekbar.addEventListener("touchend", onHoverStop)
+		} else {
+			this.seekbar.onmouseenter = onHover;
+			this.seekbar.onmouseleave = onHoverStop;
+		}
 	}
 
 	static loadMarkers() {
@@ -250,6 +269,20 @@ class SeekbarManager {
 		this.seekbar
 			.querySelectorAll(".marker")
 			.forEach((marker) => marker.remove());
+	}
+
+	static hideSeekbar() {
+		if (!this.seekbarShowing) return;
+		this.seekbarShowing = false;
+
+		this.seekbar.classList.add("seekbar-hidden");
+	}
+
+	static showSeekbar() {
+		if (this.seekbarShowing) return;
+		this.seekbarShowing = true;
+
+		this.seekbar.classList.remove("seekbar-hidden");
 	}
 
 	static getSeekbar() {
@@ -316,6 +349,11 @@ class SeekbarManager {
 class EventManager {
 	static {
 		document.onkeydown = (e) => {
+			if (e.code == "Space") {
+				if (this.space) return;
+				this.space = true;
+			}
+
 			if (e.code == "ShiftLeft") this.shift = true;
 			if (e.code == "ControlLeft") this.control = true;
 
@@ -381,12 +419,12 @@ class EventManager {
 						) {
 							e.preventDefault();
 							PlayModeManager.rotatePlayMode();
-							return;
 						}
+						return;
 					case "KeyD":
 						// TODO: Remove this once not needed anymore
 						e.preventDefault();
-						ApiManager.useLocalEndpoint();
+						ApiManager.rotateEndpoint();
 						return;
 				}
 			}
@@ -420,9 +458,9 @@ class EventManager {
 		};
 
 		document.onkeyup = (e) => {
+			if (e.code == "Space") this.space = false;
 			if (e.code == "ShiftLeft") this.shift = false;
 			if (e.code == "ControlLeft") this.control = false;
-
 			if (
 				(!SearchManager.isActive() && e.code == "ArrowUp") ||
 				e.code == "ArrowDown"
@@ -438,7 +476,12 @@ class EventManager {
 class ApiManager {
 	static {
 		this.apiVersion = 1;
-		this.endpoint = localStorage.getItem("endpoint") || this.useDemoEndpoint();
+
+		this.defaultEndpoints = ["https://demomusicapi.osumatrix.me", "http://localhost:3000"];
+		this.endpoints = this.loadEndpoints() || this.defaultEndpoints;
+		this.currentEndpoint = this.getCurrentEndpoint();
+
+		this.currentEndpointIndex = 0;
 
 		this.sendOption = (method = "POST") => ({
 			method,
@@ -450,20 +493,49 @@ class ApiManager {
 		Song.setApi(`${this.getApi()}/songs`);
 	}
 
-	static useLocalEndpoint() {
-		this.setEndpoint("http://localhost:3000");
+	// TODO: Add frontend for this
+	static saveEndpoints() {
+		localStorage.setItem("endpoints", JSON.parse(this.endpoints));
 	}
 
-	static useDemoEndpoint() {
-		this.setEndpoint("https://demomusicapi.osumatrix.me");
+	static loadEndpoints() {
+		const endpoints = localStorage.getItem("endpoints");
+		if (endpoints == null) return null;
+
+		this.endpoints = JSON.parse(localStorage.getItem("endpoints"));
+	}
+
+	// TODO: Add frontend for this
+	static addEndpoint(endpoint) {
+		this.endpoints.push(endpoint);
+		this.saveEndpoints();
+	}
+
+	// TODO: Add frontend for this
+	static resetEndpoints() {
+		this.endpoints = this.defaultEndpoints;
+	}
+
+	static rotateEndpoint() {
+		this.currentEndpointIndex = (this.currentEndpointIndex + 1) % this.endpoints.length;
+
+		this.setEndpoint(this.endpoints[this.currentEndpointIndex]);
+		this.saveCurrentEndpoint();
+	}
+
+	static getCurrentEndpoint() {
+		const endpoint = localStorage.getItem("currentEndpoint");
+		return endpoint == null ? this.endpoints[0] : endpoint;
+	}
+
+	static saveCurrentEndpoint() {
+		localStorage.setItem("currentEndpoint", this.currentEndpoint);
 	}
 
 	static setEndpoint(endpoint) {
-		if (this.endpoint == endpoint) return;
+		if (this.currentEndpoint == endpoint) return;
 
-		this.endpoint = endpoint;
-
-		localStorage.setItem("endpoint", endpoint);
+		this.currentEndpoint = endpoint;
 
 		PopupManager.showPopup(endpoint);
 	}
@@ -540,7 +612,7 @@ class ApiManager {
 	}
 
 	static getApi() {
-		return `${this.endpoint}/api/v${this.apiVersion}`;
+		return `${this.currentEndpoint}/api/v${this.apiVersion}`;
 	}
 
 	static async request(api, options) {
@@ -628,7 +700,7 @@ class SongManager {
 
 		this.getNewSongs().catch((_) => {
 			PopupManager.showPopup("Disconnected", 60 * 1000);
-		});
+		})
 	}
 
 	static isSortedByModifiedDate() {
@@ -695,10 +767,17 @@ class SongManager {
 	}
 
 	static async getNewSongs() {
+		if (this.offset == -1) return; // no more songs to load (end of list
+
 		const ids = await ApiManager.getSongIds(
 			this.offset,
 			this.sortByModifiedDate
 		);
+
+		if (ids.length == 0) {
+			this.offset = -1; // no more songs to load (end of list)
+			return;
+		}
 
 		this.offset = this.sortByModifiedDate
 			? this.offset + 1 // if sorting by modified date, paginate by 1
@@ -729,6 +808,7 @@ class SongManager {
 
 		// instantly update seekbar
 		SeekbarManager.setProgress(0);
+		SeekbarManager.showSeekbar();
 	}
 
 	static playSongId(id) {
@@ -1196,11 +1276,11 @@ class AnimationManager {
 
 		let time = 0;
 		this.breathingAnimation = () => {
-			if (AnimationManager.isMouseOnImage || AudioManager.isPaused()) return;
+			if (this.isMouseOnImage || AudioManager.isPaused()) return;
 
 			time += 0.2;
 
-			AnimationManager.animateImage(
+			this.animateImage(
 				Math.sin(time) * 50,
 				Math.cos(time / 2) * 50
 			);
@@ -1214,33 +1294,68 @@ class AnimationManager {
 			const x = e.pageX - position.left - position.width / 2;
 			const y = e.pageY - position.top - position.height / 2;
 
-			AnimationManager.animateImage(x, y);
+			this.animateImage(x, y);
 		};
+
 		this.imageOnMouseOut = () => {
 			image.style.transform = "translate(0px, 0px)";
 		};
 
-		image.onmouseenter = () => (AnimationManager.isMouseOnImage = true);
-		image.onmouseleave = () => (AnimationManager.isMouseOnImage = false);
+		this.imageOnMouseMoveTouch = (e) => this.imageOnMouseMove(this.transformTouchEvent(e));
+		this.imageOnMouseMoveOutTouch = (e) => this.imageOnMouseOut(this.transformTouchEvent(e));
+
+		const setMouseOnImageTrue = () => (this.isMouseOnImage = true);
+		const setMouseOnImageFalse = () => (this.isMouseOnImage = false);
+
+		this.isTouchDevice = "ontouchstart" in window;
+
+		if (this.isTouchDevice) {
+			this.image.addEventListener("touchstart", setMouseOnImageTrue);
+			this.image.addEventListener("touchend", setMouseOnImageFalse);
+		} else {
+			image.onmouseenter = setMouseOnImageTrue
+			image.onmouseleave = setMouseOnImageFalse
+		}
 
 		if (this.animationsEnabled) this.start();
 	}
 
 	static stop() {
-		AnimationManager.imageOnMouseOut();
+		this.imageOnMouseOut();
 
-		AnimationManager.image.onmousemove = null;
-		AnimationManager.image.onmouseout = null;
-		clearInterval(AnimationManager.breathingAnimationInterval);
+		if (this.isTouchDevice) {
+			this.image.removeEventListener("touchmove", this.imageOnMouseMoveTouch);
+			this.image.removeEventListener("touchend", this.imageOnMouseMoveOutTouch);
+		} else {
+			this.image.onmousemove = null;
+			this.image.onmouseout = null;
+		}
+
+		clearInterval(this.breathingAnimationInterval);
+	}
+
+	static transformTouchEvent(e) {
+		const changedTouches = e.changedTouches[0];
+
+		return {
+			pageX: changedTouches.pageX,
+			pageY: changedTouches.pageY,
+			timeStamp: e.timeStamp
+		}
 	}
 
 	static start() {
-		AnimationManager.stop();
+		this.stop();
 
-		AnimationManager.image.onmousemove = AnimationManager.imageOnMouseMove;
-		AnimationManager.image.onmouseout = AnimationManager.imageOnMouseOut;
-		AnimationManager.breathingAnimationInterval = setInterval(
-			AnimationManager.breathingAnimation,
+		if (this.isTouchDevice) {
+			this.image.ontouchmove = this.imageOnMouseMoveTouch;
+			this.image.addEventListener("touchend", this.imageOnMouseMoveOutTouch);
+		} else {
+			this.image.onmousemove = this.imageOnMouseMove;
+			this.image.onmouseout = this.imageOnMouseOut;
+		}
+		this.breathingAnimationInterval = setInterval(
+			this.breathingAnimation,
 			1000 / 4
 		);
 	}

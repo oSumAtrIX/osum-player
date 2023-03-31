@@ -20,7 +20,6 @@
 }
 
 #song-list {
-	user-select: none;
 	min-width: 600px;
 	max-width: 70%;
 	padding: 20px;
@@ -31,7 +30,29 @@
 	margin: 0;
 }
 
+@media (min-width:1100px) {
+	#popup {
+		font-size: 120px;
+	}
+
+	.popup-active {
+		font-size: 128px !important;
+	}
+}
+
 @media (max-width:1100px) {
+	#seekbar {
+		min-height: 30px !important;
+	}
+
+	#popup {
+		font-size: 90px;
+	}
+
+	.popup-active {
+		font-size: 95px !important;
+	}
+
 	.player-container {
 		overflow: hidden;
 	}
@@ -48,8 +69,10 @@
 	}
 
 	#image {
-		max-height: 90% !important;
+		max-height: 45% !important;
 		max-width: auto !important;
+		z-index: 1;
+		position: absolute;
 	}
 }
 
@@ -57,11 +80,7 @@
 	border-radius: 10px;
 	box-shadow: 0 0 100px 0 var(--image-shadow);
 	transition: transform 0.5s, scale 1s, filter 0.2s;
-	user-select: none;
 	-webkit-user-drag: none;
-	-moz-user-select: none;
-	-webkit-user-select: none;
-	-ms-user-select: none;
 	max-height: 50%;
 	max-width: 90%;
 	opacity: 1;
@@ -146,7 +165,7 @@
 	position: absolute;
 	transition: opacity .1s;
 	width: 100%;
-	z-index: 1;
+	z-index: 2;
 	justify-content: center
 }
 
@@ -161,7 +180,6 @@
 }
 
 #seekbar {
-	user-select: none;
 	align-items: flex-end;
 	bottom: 0;
 	display: flex;
@@ -170,7 +188,11 @@
 	overflow: hidden;
 	position: absolute;
 	width: 100%;
-	z-index: 2
+	z-index: 3
+}
+
+.seekbar-hidden {
+	display: none !important;
 }
 
 #seekbar-current-song-duration-text,
@@ -179,6 +201,7 @@
 }
 
 #seekbar-current-time {
+	background-color: var(--background-opaque);
 	display: flex;
 	opacity: 0;
 	transition: opacity .1s linear
@@ -192,7 +215,7 @@
 	transform: translateX(-50%);
 	transition: opacity .1s linear;
 	width: 0;
-	z-index: 1
+	z-index: 3
 }
 
 #seekbar-knob-circle {
@@ -217,14 +240,12 @@
 }
 
 #popup {
-	user-select: none;
 	backdrop-filter: blur(10px);
 	align-items: center;
 	background-color: var(--background-even-more-opaque);
 	display: none;
 	border-radius: 10px;
 	display: flex !important;
-	font-size: 128px;
 	justify-content: center;
 	left: 50%;
 	opacity: 0;
@@ -234,7 +255,7 @@
 	top: 50%;
 	transform: translate(-50%, -50%);
 	transition: all .05s linear;
-	z-index: 3
+	z-index: 5
 }
 
 #popup-text {
@@ -268,7 +289,7 @@
 	height: 5px;
 	position: absolute;
 	width: 3px;
-	z-index: 3
+	z-index: 4
 }
 
 .search-active {
@@ -309,7 +330,6 @@
 }
 
 .popup-active {
-	font-size: 120px !important;
 	opacity: 1 !important
 }
 
@@ -369,5 +389,6 @@ hr {
 }
 
 html {
-	height: 100%
+	height: 100%;
+	user-select: none;
 }
