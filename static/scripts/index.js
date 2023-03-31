@@ -381,8 +381,8 @@ class EventManager {
 						) {
 							e.preventDefault();
 							PlayModeManager.rotatePlayMode();
-							return;
 						}
+						return;
 					case "KeyD":
 						// TODO: Remove this once not needed anymore
 						e.preventDefault();
