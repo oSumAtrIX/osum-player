@@ -671,7 +671,7 @@ class SongManager {
 		this.selectPrevNextWaitTime = 100;
 
 		this.sortByModifiedDate =
-			localStorage.getItem("sortByModifiedDate") || false;
+			localStorage.getItem("sortByModifiedDate") || true;
 
 		// handle glow effect
 		
@@ -1271,7 +1271,7 @@ class SearchManager {
 
 class AnimationManager {
 	static {
-		this.animationsEnabled = localStorage.getItem("animationsEnabled") && true;
+		this.animationsEnabled = localStorage.getItem("animationsEnabled") || true;
 		this.image = $("#image");
 		this.breathingAnimationInterval = null;
 
