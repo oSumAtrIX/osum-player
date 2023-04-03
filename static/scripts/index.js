@@ -106,7 +106,7 @@ class PopupManager {
 		this.popupText = $("#popup-text");
 	}
 
-	static showPopup(text, duration = 600) {
+	static showPopup(text, duration = 1000) {
 		// show popup
 		this.popupText.innerText = text;
 
@@ -162,7 +162,7 @@ class SeekbarManager {
 			SeekbarManager.setProgress(calculateProgress);
 			AudioManager.setProgress(calculateProgress);
 
-			PopupManager.showPopup(this.currentTimeText.innerText, 300);
+			PopupManager.showPopup(this.currentTimeText.innerText, 500);
 		};
 
 		// update seekbar on mouse events
