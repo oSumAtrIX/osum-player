@@ -64,15 +64,7 @@ Access the player from any device.
    npx prisma migrate deploy
    ```
 
-4. Configure environment variables using `env.example`:
-
-   ```env
-   SERVER_PORT=3000
-   SONGS_PATH=songs/
-   SONGS_PER_OFFSET=32
-   DATABASE_URL="file:./database.db?connection_limit=1"
-   IMAGE_CACHE_PATH=cache/
-   ```
+4. Configure environment variables following the example from `env.example`:
 
 5. Start the server
 
