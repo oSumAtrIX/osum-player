@@ -14,7 +14,7 @@ import {
 	addMarker,
 	findSongRandom,
 } from "./songs.services.js";
-import { getSong, getId, checkDemoMode as checkDemoMode } from "../../middlewares.js";
+import { getSong, getId, checkDemoMode } from "./middlewares.js";
 
 const router = Router();
 
