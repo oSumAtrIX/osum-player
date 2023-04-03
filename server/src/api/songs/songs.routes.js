@@ -14,7 +14,7 @@ import {
 	addMarker,
 	findSongRandom,
 } from "./songs.services.js";
-import { getSong, getId } from "../../middlewares.js";
+import { getSong, getId, checkDemoMode as checkDemoMode } from "../../middlewares.js";
 
 const router = Router();
 
@@ -39,7 +39,7 @@ router.get("/", async (req, res, next) => {
 	next();
 });
 
-router.post("/", async (req, res, _next) => {
+router.post("/", checkDemoMode, async (req, res, _next) => {
 	if (req.query.hasOwnProperty("watch")) {
 		watch();
 		res.json({ message: "Watching for changes" });
@@ -49,7 +49,7 @@ router.post("/", async (req, res, _next) => {
 	}
 });
 
-router.post("/reload", async (req, res, next) => {
+router.post("/reload", checkDemoMode, async (req, res, next) => {
 	const start = Date.now();
 
 	const full = req.query.hasOwnProperty("full");
@@ -63,7 +63,7 @@ router.post("/reload", async (req, res, next) => {
 	res.json(`Reloaded songs in ${end - start}ms`);
 });
 
-router.patch("/:id/marker", getId, async (req, res, next) => {
+router.patch("/:id/marker", checkDemoMode, getId, async (req, res, next) => {
 	if (!req.body.marker) return next(new Error("Invalid body"));
 	if (req.body.marker === "clear") {
 		try {

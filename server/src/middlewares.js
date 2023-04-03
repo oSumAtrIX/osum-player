@@ -1,4 +1,6 @@
 import { findSong } from "./api/songs/songs.services.js";
+import config from "./config.js";
+
 export function notFound(_req, res, next) {
 	res.status(404);
 	const error = new Error(`Not Found`);
@@ -12,6 +14,12 @@ export function errorHandler(err, _req, res, _next) {
 		message: err.message,
 		stack: err.stack,
 	});
+}
+
+export function checkDemoMode(_req, res, next) {
+	if (config.DEMO_MODE) return res.json({ message: "This API is not available in demo mode" });
+
+	next();
 }
 
 export function getId(req, _res, next) {
