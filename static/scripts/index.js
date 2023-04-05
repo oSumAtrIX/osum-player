@@ -1378,15 +1378,7 @@ class AnimationManager {
 		this.image = $("#image");
 		this.breathingAnimationInterval = null;
 
-		this.animateImage = (x, y) => {
-			image.style.transform = `
-				perspective(10px)
-				translate(${x * 0.05}px, ${y * 0.05}px)
-				rotateX(${0.00008 * -y}deg) 
-				rotateY(${0.00008 * x}deg)
-				rotate(${0.00003 * x * y}deg)
-			`;
-		};
+		this.animateImage = (x, y) => image.style.transform = `perspective(400px) translate(${x * 4}px, ${y * 4}px) rotateX(${-y}deg)  rotateY(${x}deg) rotate(${x * y * 0.8}deg)`;
 
 		let time = 0;
 		this.breathingAnimation = () => {
@@ -1395,8 +1387,8 @@ class AnimationManager {
 			time += 0.2;
 
 			this.animateImage(
-				Math.sin(time) * 50,
-				Math.cos(time / 2) * 50
+				Math.sin(time),
+				Math.cos(time / 2)
 			);
 		};
 
@@ -1404,11 +1396,17 @@ class AnimationManager {
 			if (e.timeStamp - this.lastMouseMoveCall < 100) return;
 			this.lastMouseMoveCall = e.timeStamp;
 
-			const position = image.getBoundingClientRect();
-			const x = e.pageX - position.left - position.width / 2;
-			const y = e.pageY - position.top - position.height / 2;
+			const imagePosition = image.getBoundingClientRect();
 
-			this.animateImage(x, y);
+			const absoluteMouseX = e.pageX - imagePosition.left
+			const relativeMouseX = absoluteMouseX / imagePosition.width
+			const normalizedMouseX = (relativeMouseX - 0.5) * 2
+
+			const absoluteMouseY = e.pageY - imagePosition.top
+			const relativeMouseY = absoluteMouseY / imagePosition.height
+			const normalizedMouseY = (relativeMouseY - 0.5) * 2
+
+			this.animateImage(normalizedMouseX, normalizedMouseY);
 		};
 
 		this.imageOnMouseOut = () => {
