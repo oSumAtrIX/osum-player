@@ -101,7 +101,9 @@ class Song {
 }
 
 class PopupManager {
-	static {
+	static initialize() {
+		this.PERMANENT = -1;
+
 		this.popup = $("#popup");
 		this.popupContent = $("#popup-text");
 	}
@@ -115,6 +117,8 @@ class PopupManager {
 
 		this.popup.classList.add("popup-active");
 
+		if (duration < 0) return;
+
 		clearTimeout(this.popupActive);
 		this.popupActive = setTimeout(
 			() => this.popup.classList.remove("popup-active"),
@@ -124,7 +128,7 @@ class PopupManager {
 }
 
 class SeekbarManager {
-	static {
+	static initialize() {
 		this.seekbar = $("#seekbar");
 		this.marker = $("#marker-template").content.firstElementChild;
 
@@ -377,7 +381,7 @@ class SeekbarManager {
 }
 
 class ThemeManager {
-	static {
+	static initialize() {
 		const root = document.querySelector(":root");
 		const color = localStorage.getItem("highlight") || getComputedStyle(root).getPropertyValue("--highlight");
 		this.setTheme(color);
@@ -402,8 +406,9 @@ class ThemeManager {
 		this.setTheme("#FF003D");
 	}
 }
+
 class EventManager {
-	static {
+	static initialize() {
 		document.onkeydown = (e) => {
 			if (e.code == "Space") {
 				if (this.space) return;
@@ -549,7 +554,7 @@ class EventManager {
 }
 
 class ApiManager {
-	static {
+	static initialize() {
 		this.apiVersion = 1;
 
 		this.defaultEndpoints = ["https://demomusicapi.osumatrix.me", "http://localhost:3000"];
@@ -697,6 +702,10 @@ class ApiManager {
 		});
 	}
 
+	static async ping() {
+		return this.request("/");
+	}
+
 	static getApi() {
 		return `${this.currentEndpoint}/api/v${this.apiVersion}`;
 	}
@@ -714,7 +723,7 @@ class ApiManager {
 }
 
 class PlayModeManager {
-	static {
+	static initialize() {
 		this.AUTOPLAY = 0;
 		this.SHUFFLE = 1;
 		this.REPEAT = 2;
@@ -745,7 +754,7 @@ class PlayModeManager {
 }
 
 class SongManager {
-	static {
+	static initialize() {
 		this.history = [];
 		this.image = $("#image");
 		this.songList = $("#song-list");
@@ -788,9 +797,7 @@ class SongManager {
 			AudioManager.toggle();
 		};
 
-		this.getNewSongs().catch((_) => {
-			PopupManager.showPopup("Disconnected", 60 * 1000);
-		})
+		this.getNewSongs()
 	}
 
 	static isSortedByModifiedDate() {
@@ -1023,7 +1030,7 @@ class SongManager {
 }
 
 class AudioManager {
-	static {
+	static initialize() {
 		this.songAudio = new Audio();
 		this.interactionAudio = new Audio("assets/interaction.wav");
 		this.interactionAudio.volume = 0;
@@ -1219,7 +1226,7 @@ class AudioManager {
 }
 
 class SearchManager {
-	static {
+	static initialize() {
 		this.searchInputIsSelected = false;
 		this.visible = false;
 		this.search = $("#search-main");
@@ -1376,7 +1383,7 @@ class SearchManager {
 }
 
 class AnimationManager {
-	static {
+	static initialize() {
 		this.animationsEnabled = localStorage.getItem("animationsEnabled") || true;
 		this.image = $("#image");
 		this.breathingAnimationInterval = null;
@@ -1492,3 +1499,25 @@ class AnimationManager {
 		localStorage.setItem("animationsEnabled", this.animationsEnabled);
 	}
 }
+
+const initialize = (managers) => managers.forEach((manager) => manager.initialize());
+
+ApiManager.initialize();
+ApiManager.ping().then(() =>
+	initialize([
+		PopupManager,
+		SeekbarManager,
+		SongManager,
+		AudioManager,
+		EventManager,
+		PlayModeManager,
+		SearchManager,
+		AnimationManager,
+		ThemeManager,
+	])
+).catch((e) => {
+	console.log(e)
+	initialize([EventManager, PopupManager]);
+
+	PopupManager.showPopup("Disconnected", PopupManager.PERMANENT);
+})
