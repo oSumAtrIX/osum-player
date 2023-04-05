@@ -39,7 +39,7 @@ router.get("/", async (req, res, next) => {
 	next();
 });
 
-router.post("/", checkDemoMode, async (req, res, _next) => {
+router.patch("/", checkDemoMode, async (req, res, _next) => {
 	if (req.query.hasOwnProperty("watch")) {
 		watch();
 		res.json({ message: "Watching for changes" });
