@@ -103,12 +103,15 @@ class Song {
 class PopupManager {
 	static {
 		this.popup = $("#popup");
-		this.popupText = $("#popup-text");
+		this.popupContent = $("#popup-text");
 	}
 
-	static showPopup(text, duration = 1000) {
-		// show popup
-		this.popupText.innerText = text;
+	static showPopup(content, duration = 1000) {
+		// Avoid XSS
+		if (typeof content === "string")
+			this.popupContent.innerText = content;
+		else
+			this.popupContent.innerHTML = content;
 
 		this.popup.classList.add("popup-active");
 
