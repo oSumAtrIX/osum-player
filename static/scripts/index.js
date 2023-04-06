@@ -1378,7 +1378,7 @@ class AnimationManager {
 		this.image = $("#image");
 		this.breathingAnimationInterval = null;
 
-		this.animateImage = (x, y) => image.style.transform = `perspective(400px) translate(${x * 4}px, ${y * 4}px) rotateX(${-y}deg)  rotateY(${x}deg) rotate(${x * y * 0.8}deg)`;
+		this.animateImage = (x, y) => image.style.transform = `perspective(600px) translate(${x * 16}px, ${y * 16}px) rotateX(${-y}deg)  rotateY(${x}deg) rotate(${x * y * 0.8}deg)`;
 
 		let time = 0;
 		this.breathingAnimation = () => {
@@ -1387,8 +1387,8 @@ class AnimationManager {
 			time += 0.2;
 
 			this.animateImage(
-				Math.sin(time),
-				Math.cos(time / 2)
+				Math.sin(time) * 0.5,
+				Math.cos(time / 2) * 0.5
 			);
 		};
 
