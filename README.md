@@ -8,7 +8,7 @@ Visit [music.osumatrix.me](https://music.osumatrix.me/) for a demo!
 
 ## 🖼️ Previews
 
-Get a glimpse into osum!player and it's features.
+Get a glimpse of osum!player and it's features.
 
 ### ▶️ Player
 
