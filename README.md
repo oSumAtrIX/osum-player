@@ -116,3 +116,4 @@ Play with the album cover.
 - [ ] Rainbow seekbar
 - [ ] Global hotkeys
 - [ ] Add new audio files with drag & drop
+- [ ] Share links
