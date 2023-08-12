@@ -15,6 +15,9 @@ export function handleError(err, _req, res, _next) {
 }
 
 export function checkAuthorization(req, res, next) {
+	if (req.method === "OPTIONS")
+		return next();
+
 	if (!config.AUTH_TOKEN || req.headers.authorization === config.AUTH_TOKEN)
 		return next();
 
