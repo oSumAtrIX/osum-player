@@ -477,6 +477,7 @@ class ApiManager {
 	static {
 		this.apiVersion = 1;
 
+		this.authToken = this.getAuthorizationToken();
 		this.defaultEndpoints = ["https://demomusicapi.osumatrix.me", "http://localhost:3000"];
 		this.endpoints = this.loadEndpoints() || this.defaultEndpoints;
 		this.currentEndpoint = this.getCurrentEndpoint();
@@ -491,6 +492,15 @@ class ApiManager {
 		});
 
 		Song.setApi(`${this.getApi()}/songs`);
+	}
+
+	static getAuthorizationToken() {
+		return localStorage.getItem("authorizationToken");
+	}
+
+	static setAuthorizationToken(token) {
+		localStorage.setItem("authorizationToken", token);
+		this.authToken = token;
 	}
 
 	// TODO: Add frontend for this
@@ -615,8 +625,23 @@ class ApiManager {
 		return `${this.currentEndpoint}/api/v${this.apiVersion}`;
 	}
 
+	static withAuthorization(options) {
+		if (this.authToken != null) {
+			if (options == null) options = {
+				headers: {
+					authorization: this.authToken,
+				},
+			}
+			else {
+				options.headers.authorization = this.authToken;
+			}
+		}
+
+		return options;
+	}
+
 	static async request(api, options) {
-		const response = await fetch(`${this.getApi()}${api}`, options);
+		const response = await fetch(`${this.getApi()}${api}`, this.withAuthorization(options));
 
 		if (!response.ok) return Promise.reject(response.status);
 
@@ -674,9 +699,9 @@ class SongManager {
 			localStorage.getItem("sortByModifiedDate") || true;
 
 		// handle glow effect
-		
+
 		const colorThief = new ColorThief();
-	
+
 		this.image.crossOrigin = "anonymous"; // required for color thief to work
 
 		this.image.onload = (e) => {
