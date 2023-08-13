@@ -493,6 +493,11 @@ class ApiManager {
 		Song.setApi(`${this.getApi()}/songs`);
 	}
 
+
+	static setAuthorizationToken(token) {
+		document.cookie = `token=${token};domain=${window.location.hostname};max-age=31536000`;
+	}
+
 	// TODO: Add frontend for this
 	static saveEndpoints() {
 		localStorage.setItem("endpoints", JSON.parse(this.endpoints));
@@ -616,7 +621,10 @@ class ApiManager {
 	}
 
 	static async request(api, options) {
-		const response = await fetch(`${this.getApi()}${api}`, options);
+		const response = await fetch(`${this.getApi()}${api}`, {
+			credentials: 'include',
+			...options
+		});
 
 		if (!response.ok) return Promise.reject(response.status);
 
@@ -674,9 +682,9 @@ class SongManager {
 			localStorage.getItem("sortByModifiedDate") || true;
 
 		// handle glow effect
-		
+
 		const colorThief = new ColorThief();
-	
+
 		this.image.crossOrigin = "anonymous"; // required for color thief to work
 
 		this.image.onload = (e) => {
