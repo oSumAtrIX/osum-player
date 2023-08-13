@@ -495,7 +495,11 @@ class ApiManager {
 
 
 	static setAuthorizationToken(token) {
-		document.cookie = `token=${token};domain=${window.location.hostname};max-age=31536000`;
+		let name = window.location.hostname;
+		const parts = name.split(".");
+		if (parts.length > 1) name = parts.slice(-2).join(".");
+
+		document.cookie = `token=${token};domain=.${name};max-age=31536000`;
 	}
 
 	// TODO: Add frontend for this
@@ -680,17 +684,6 @@ class SongManager {
 
 		this.sortByModifiedDate =
 			localStorage.getItem("sortByModifiedDate") || true;
-
-		// handle glow effect
-
-		const colorThief = new ColorThief();
-
-		this.image.crossOrigin = "anonymous"; // required for color thief to work
-
-		this.image.onload = (e) => {
-			const color = colorThief.getColor(e.target).map((c) => Math.floor(c * 0.8));
-			e.target.style.boxShadow = `0 0 50px rgb(${color})`;
-		};
 
 		// handle song playback
 		this.songList.onclick = (e) => {
