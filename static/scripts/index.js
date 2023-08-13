@@ -685,17 +685,6 @@ class SongManager {
 		this.sortByModifiedDate =
 			localStorage.getItem("sortByModifiedDate") || true;
 
-		// handle glow effect
-
-		const colorThief = new ColorThief();
-
-		this.image.crossOrigin = "anonymous"; // required for color thief to work
-
-		this.image.onload = (e) => {
-			const color = colorThief.getColor(e.target).map((c) => Math.floor(c * 0.8));
-			e.target.style.boxShadow = `0 0 50px rgb(${color})`;
-		};
-
 		// handle song playback
 		this.songList.onclick = (e) => {
 			if (e.target.classList.contains("song-item")) {
