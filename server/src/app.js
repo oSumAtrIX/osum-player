@@ -8,10 +8,10 @@ import cookieParser from "cookie-parser";
 
 const app = express();
 
+app.use(morgan("dev"));
+app.use(cors({ origin: true, credentials: true }));
 app.use(cookieParser());
 app.use(checkAuthorization);
-app.use(morgan("dev"));
-app.use(cors());
 app.use(json());
 
 app.get("/", (_req, res) => {
