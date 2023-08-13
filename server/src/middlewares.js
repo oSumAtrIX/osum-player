@@ -18,9 +18,9 @@ export function checkAuthorization(req, res, next) {
 	if (req.method === "OPTIONS")
 		return next();
 
-	if (!config.AUTH_TOKEN || req.headers.authorization === config.AUTH_TOKEN)
+	if (!config.AUTH_TOKEN || req.cookies.authorization === config.AUTH_TOKEN)
 		return next();
 
 	res.status(401);
-	next(new Error(`Not authorized`));
+	res.end();
 }

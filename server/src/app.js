@@ -4,9 +4,11 @@ import cors from "cors";
 
 import { notFound, handleError, checkAuthorization } from "./middlewares.js";
 import api from "./api/index.js";
+import cookieParser from "cookie-parser";
 
 const app = express();
 
+app.use(cookieParser());
 app.use(checkAuthorization);
 app.use(morgan("dev"));
 app.use(cors());
