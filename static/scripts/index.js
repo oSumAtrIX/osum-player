@@ -499,7 +499,7 @@ class ApiManager {
 		const parts = name.split(".");
 		if (parts.length > 1) name = parts.slice(-2).join(".");
 
-		document.cookie = `token=${token};domain=.${name};max-age=31536000`;
+		document.cookie = `authorization=${token};domain=.${name};max-age=31536000`;
 	}
 
 	// TODO: Add frontend for this
