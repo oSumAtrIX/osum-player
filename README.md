@@ -79,8 +79,9 @@ Access the player from any device.
 - `CTRL+C`: Clear all marker
 - `CTRL+E`: Toggle animations
 - `CTRL+D`: Toggle between endpoints
-- `CTRL+Plus` Increase volume
-- `CTRL+Minus` Decrease volume
+- `CTRL+Plus`: Increase volume
+- `CTRL+Minus`: Decrease volume
+- `CTRL+Q`: Quick reload songs
 - `A-Za-z`: Start search
 - `Escape`: Close search
 - `Space`: Play, pause or start a song

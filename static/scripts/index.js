@@ -426,6 +426,10 @@ class EventManager {
 						e.preventDefault();
 						ApiManager.rotateEndpoint();
 						return;
+					case "KeyQ":
+						e.preventDefault();
+						ApiManager.reloadSongs();
+						return;
 				}
 			}
 
@@ -549,9 +553,11 @@ class ApiManager {
 		PopupManager.showPopup(endpoint);
 	}
 
-	// TODO: implement frontend for this
-	static reload() {
-		return this.request("/songs/reload", this.sendOption());
+	static reloadSongs() {
+		PopupManager.showPopup("Reloading");
+		return this.request("/songs/reload", this.sendOption()).then(() =>
+			window.location.reload()
+		);
 	}
 
 	// TODO: make use of limit and offset
