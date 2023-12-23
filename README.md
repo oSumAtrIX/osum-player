@@ -74,14 +74,14 @@ Access the player from any device.
 
 ## ⌨️ Keybinds
 
-- `CTRL+A`: Toggle autoplay
+- `CTRL+P`: Rotate between play modes
 - `CTRL+M`: Add a marker
 - `CTRL+C`: Clear all marker
-- `CTRL+E`: Toggle animations
-- `CTRL+D`: Toggle between endpoints
+- `CTRL+A`: Toggle animations
+- `CTRL+E`: Rotate between endpoints
 - `CTRL+Plus`: Increase volume
 - `CTRL+Minus`: Decrease volume
-- `CTRL+Q`: Quick reload songs
+- `CTRL+R`: Quick reload songs
 - `A-Za-z`: Start search
 - `Escape`: Close search
 - `Space`: Play, pause or start a song

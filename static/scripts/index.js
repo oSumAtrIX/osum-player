@@ -393,10 +393,7 @@ class EventManager {
 					case "Slash":
 						AudioManager.changeVolume(false);
 						return;
-					case "KeyR":
-						SongManager.toggleRepeat();
-						return;
-					case "KeyE":
+					case "KeyA":
 						e.preventDefault();
 						AnimationManager.toggleAnimations();
 						return;
@@ -412,7 +409,7 @@ class EventManager {
 						e.preventDefault();
 						SongManager.toggleSortByModifiedDate();
 						return;
-					case "KeyA":
+					case "KeyP":
 						if (
 							!SearchManager.isSearchSelected() ||
 							!SearchManager.isActive()
@@ -421,12 +418,12 @@ class EventManager {
 							PlayModeManager.rotatePlayMode();
 						}
 						return;
-					case "KeyD":
+					case "KeyE":
 						// TODO: Remove this once not needed anymore
 						e.preventDefault();
 						ApiManager.rotateEndpoint();
 						return;
-					case "KeyQ":
+					case "KeyR":
 						e.preventDefault();
 						ApiManager.reloadSongs();
 						return;
