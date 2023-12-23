@@ -551,7 +551,7 @@ class ApiManager {
 
 	// TODO: implement frontend for this
 	static reload() {
-		return this.request("/songs/reload", sendOption());
+		return this.request("/songs/reload", this.sendOption());
 	}
 
 	// TODO: make use of limit and offset
