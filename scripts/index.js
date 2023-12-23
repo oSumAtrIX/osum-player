@@ -393,10 +393,7 @@ class EventManager {
 					case "Slash":
 						AudioManager.changeVolume(false);
 						return;
-					case "KeyR":
-						SongManager.toggleRepeat();
-						return;
-					case "KeyE":
+					case "KeyA":
 						e.preventDefault();
 						AnimationManager.toggleAnimations();
 						return;
@@ -412,7 +409,7 @@ class EventManager {
 						e.preventDefault();
 						SongManager.toggleSortByModifiedDate();
 						return;
-					case "KeyA":
+					case "KeyP":
 						if (
 							!SearchManager.isSearchSelected() ||
 							!SearchManager.isActive()
@@ -421,10 +418,14 @@ class EventManager {
 							PlayModeManager.rotatePlayMode();
 						}
 						return;
-					case "KeyD":
+					case "KeyE":
 						// TODO: Remove this once not needed anymore
 						e.preventDefault();
 						ApiManager.rotateEndpoint();
+						return;
+					case "KeyR":
+						e.preventDefault();
+						ApiManager.reloadSongs();
 						return;
 				}
 			}
@@ -499,7 +500,7 @@ class ApiManager {
 		const parts = name.split(".");
 		if (parts.length > 1) name = parts.slice(-2).join(".");
 
-		document.cookie = `token=${token};domain=.${name};max-age=31536000`;
+		document.cookie = `authorization=${token};domain=.${name};max-age=31536000`;
 	}
 
 	// TODO: Add frontend for this
@@ -549,9 +550,11 @@ class ApiManager {
 		PopupManager.showPopup(endpoint);
 	}
 
-	// TODO: implement frontend for this
-	static reload() {
-		return this.request("/songs/reload", sendOption());
+	static reloadSongs() {
+		PopupManager.showPopup("Reloading");
+		return this.request("/songs/reload", this.sendOption()).then(() =>
+			window.location.reload()
+		);
 	}
 
 	// TODO: make use of limit and offset
