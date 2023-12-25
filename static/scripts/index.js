@@ -465,12 +465,6 @@ class EventManager {
 			if (e.code == "Space") this.space = false;
 			if (e.code == "ShiftLeft") this.shift = false;
 			if (e.code == "ControlLeft") this.control = false;
-			if (
-				(!SearchManager.isActive() && e.code == "ArrowUp") ||
-				e.code == "ArrowDown"
-			) {
-				SongManager.playCurrentSongItem();
-			}
 		};
 
 		document.oncontextmenu = (e) => e.preventDefault();
@@ -872,8 +866,6 @@ class SongManager {
 			return;
 		this.selectNextTimeout = Date.now();
 
-		AudioManager.pauseImage();
-
 		let next;
 		if (this.currentSongItem) {
 			next = this.currentSongItem.nextElementSibling;
@@ -897,8 +889,6 @@ class SongManager {
 		if (Date.now() - this.selectPreviousTimeout < this.selectPrevNextWaitTime)
 			return;
 		this.selectPreviousTimeout = Date.now();
-
-		AudioManager.pauseImage();
 
 		let next;
 		if (this.currentSongItem) {
