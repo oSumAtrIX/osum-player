@@ -162,7 +162,7 @@ class SeekbarManager {
 			SeekbarManager.setProgress(calculateProgress);
 			AudioManager.setProgress(calculateProgress);
 
-			PopupManager.showPopup(this.currentTimeText.innerText, 500);
+			PopupManager.showPopup(this.currentTimeText.innerText, 800);
 		};
 
 		// update seekbar on mouse events
@@ -382,6 +382,9 @@ class EventManager {
 					case "Space":
 						AudioManager.toggle();
 						return;
+					case "Enter":
+						if (AudioManager.isPaused()) SongManager.playCurrentSongItem();
+						return;
 				}
 			}
 
@@ -462,12 +465,6 @@ class EventManager {
 			if (e.code == "Space") this.space = false;
 			if (e.code == "ShiftLeft") this.shift = false;
 			if (e.code == "ControlLeft") this.control = false;
-			if (
-				(!SearchManager.isActive() && e.code == "ArrowUp") ||
-				e.code == "ArrowDown"
-			) {
-				SongManager.playCurrentSongItem();
-			}
 		};
 
 		document.oncontextmenu = (e) => e.preventDefault();
@@ -869,8 +866,6 @@ class SongManager {
 			return;
 		this.selectNextTimeout = Date.now();
 
-		AudioManager.pauseImage();
-
 		let next;
 		if (this.currentSongItem) {
 			next = this.currentSongItem.nextElementSibling;
@@ -894,8 +889,6 @@ class SongManager {
 		if (Date.now() - this.selectPreviousTimeout < this.selectPrevNextWaitTime)
 			return;
 		this.selectPreviousTimeout = Date.now();
-
-		AudioManager.pauseImage();
 
 		let next;
 		if (this.currentSongItem) {
@@ -1237,6 +1230,7 @@ class SearchManager {
 
 		resultItem.id = song.id;
 
+		$(".search-result-song-image", resultItem).src = song.image;
 		$(".search-result-song-title", resultItem).innerText = song.title;
 		$(".search-result-song-artist", resultItem).innerText = song.artist;
 
