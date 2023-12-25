@@ -1230,6 +1230,7 @@ class SearchManager {
 
 		resultItem.id = song.id;
 
+		$(".search-result-song-image", resultItem).src = song.image;
 		$(".search-result-song-title", resultItem).innerText = song.title;
 		$(".search-result-song-artist", resultItem).innerText = song.artist;
 

@@ -26,7 +26,7 @@
 					</ul>
 				</div>
 				<div class="player-container">
-					<img id="image" alt="image" src />
+					<img id="image" alt="song-image" src />
 				</div>
 			</div>
 		</div>
@@ -62,7 +62,10 @@
 	<template id="search-result-template">
 		<li class="search-result-item" id>
 			<a class="search-result">
-				<span class="search-result-song-title"><!-- song title --></span>
+				<div class="search-result-song-image-title-container">
+					<img class="search-result-song-image" alt="song-image" src />
+					<span class="search-result-song-title"><!-- song title --></span>
+				</div>
 				<span class="search-result-song-artist"><!-- song artist --></span>
 			</a>
 		</li>
