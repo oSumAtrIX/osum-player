@@ -162,7 +162,7 @@ class SeekbarManager {
 			SeekbarManager.setProgress(calculateProgress);
 			AudioManager.setProgress(calculateProgress);
 
-			PopupManager.showPopup(this.currentTimeText.innerText, 500);
+			PopupManager.showPopup(this.currentTimeText.innerText, 800);
 		};
 
 		// update seekbar on mouse events
