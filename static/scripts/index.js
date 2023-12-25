@@ -382,6 +382,9 @@ class EventManager {
 					case "Space":
 						AudioManager.toggle();
 						return;
+					case "Enter":
+						if (AudioManager.isPaused()) SongManager.playCurrentSongItem();
+						return;
 				}
 			}
 

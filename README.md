@@ -85,11 +85,11 @@ Access the player from any device.
 - `A-Za-z`: Start search
 - `Escape`: Close search
 - `Space`: Play, pause or start a song
+- `Enter`: Play a song or currently selected search result
 - `ArrowLeft`: Scrub forwards (Hold `SHIFT` for fine and `CTRL` for rough scrubbing)
 - `ArrowRight`: Scrub backwards (Hold `SHIFT` for fine and `CTRL` for rough scrubbing)
 - `ArrowUp`: Play previous song or select previous search result
 - `ArrowDown`: Play next song or select previous search result
-- `Enter`: Play currently selected search result
 
 > **Note**: You can use your mouse wheel on the seekbar or album cover to adjust the volume.
 
