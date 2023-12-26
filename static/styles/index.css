@@ -110,7 +110,7 @@
 
 .image-paused {
 	scale: 0.98;
-	filter: saturate(0.1) brightness(0.5);
+	filter: saturate(0.1) brightness(0.5) blur(2px);
 }
 
 #search-input {
