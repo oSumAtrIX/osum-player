@@ -22,7 +22,6 @@
 #song-list {
 	min-width: 600px;
 	max-width: 70%;
-	padding: 20px;
 	height: 80%;
 	min-width: 70%;
 	max-width: 70%;
@@ -129,7 +128,6 @@
 	cursor: pointer;
 	transition: color 0.1s, padding 0.1s, letter-spacing 0.1s;
 }
-
 
 @keyframes opacity {
 	0% {
@@ -384,7 +382,7 @@
 ::-webkit-scrollbar {
 	border-radius: 10px;
 	display: none;
-	width: 10px
+	width: 10px;
 }
 
 ::-webkit-scrollbar-thumb {
