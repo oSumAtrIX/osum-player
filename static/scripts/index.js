@@ -383,7 +383,7 @@ class EventManager {
 						AudioManager.toggle();
 						return;
 					case "Enter":
-						if (AudioManager.isPaused()) SongManager.playCurrentSongItem();
+						SongManager.playCurrentSongItem();
 						return;
 				}
 			}

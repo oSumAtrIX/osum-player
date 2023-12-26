@@ -85,7 +85,7 @@ Access the player from any device.
 - `A-Za-z`: Start search
 - `Escape`: Close search
 - `Space`: Play, pause or start a song
-- `Enter`: Play a song or currently selected search result
+- `Enter`: Start the currently selected song or search result
 - `ArrowLeft`: Scrub forwards (Hold `SHIFT` for fine and `CTRL` for rough scrubbing)
 - `ArrowRight`: Scrub backwards (Hold `SHIFT` for fine and `CTRL` for rough scrubbing)
 - `ArrowUp`: Play previous song or select previous search result
