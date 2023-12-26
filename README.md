@@ -37,13 +37,13 @@ Access the player from any device.
 ## ⭐ Features
 
 - Fast & responsive
-- Intuitive user experience
+- Mark hot spots
+- Intuitive UX
 - Minimal design
 - Keyboard oriented
-- Autoplay
-- Searching
-- Marker
-- History
+- Autoplay, shuffle, repeat or play once
+- Global search
+- Play history
 
 ## 🪛 Server setup
 

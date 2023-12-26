@@ -685,13 +685,13 @@ class ApiManager {
 class PlayModeManager {
 	static {
 		this.AUTOPLAY = 0;
-		this.RANDOM = 1;
+		this.SHUFFLE = 1;
 		this.REPEAT = 2;
 		this.ONCE = 3;
 
 		this.playModes = new Map([
 			[this.AUTOPLAY, "Autoplay"],
-			[this.RANDOM, "Random"],
+			[this.SHUFFLE, "Shuffle"],
 			[this.REPEAT, "Repeat"],
 			[this.ONCE, "Once"],
 		]);
@@ -1039,7 +1039,7 @@ class AudioManager {
 				case PlayModeManager.AUTOPLAY:
 					SongManager.selectNextAndPlay();
 					break;
-				case PlayModeManager.RANDOM:
+				case PlayModeManager.SHUFFLE:
 					const song = await ApiManager.getRandomSong();
 					SongManager.add(song);
 					SongManager.playSongAndSetActive(song);
