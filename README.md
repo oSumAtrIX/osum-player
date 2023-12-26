@@ -75,24 +75,26 @@ Access the player from any device.
 
 ## ⌨️ Keybinds
 
-- `CTRL+P`: Rotate between play modes
-- `CTRL+M`: Add a marker
-- `CTRL+C`: Clear all marker
-- `CTRL+A`: Toggle animations
-- `CTRL+E`: Rotate between endpoints
-- `CTRL+Plus`: Increase volume
-- `CTRL+Minus`: Decrease volume
-- `CTRL+R`: Quick reload songs
-- `A-Za-z`: Start search
-- `Escape`: Close search
-- `Space`: Play, pause or start a song
-- `Enter`: Start the currently selected song or search result
-- `ArrowLeft`: Scrub backwards (Hold `SHIFT` for fine and `CTRL` for rough scrubbing) or play previous song
-- `ArrowRight`: Scrub forwards (Hold `SHIFT` for fine and `CTRL` for rough scrubbing)
-- `ArrowUp`: Play previous song or select previous search result
-- `ArrowDown`: Play next song or select previous search result
-- `Home`: Skip to the beginning of the current song
-- `End`: Skip to the end of the current song
+| Shortcut     | Description                                                                                     |
+| ------------ | ----------------------------------------------------------------------------------------------- |
+| `CTRL+P`     | Rotate between play modes (Autoplay, shuffle, repeat or play once)                              |
+| `CTRL+M`     | Add marker to highlight hotspots in your songs                                                  |
+| `CTRL+C`     | Clear all markers                                                                               |
+| `CTRL+A`     | Toggle animations                                                                               |
+| `CTRL+E`     | Rotate between endpoints                                                                        |
+| `CTRL+Plus`  | Increase volume                                                                                 |
+| `CTRL+Minus` | Decrease volume                                                                                 |
+| `CTRL+R`     | Quick reload songs to update the database                                                       |
+| `A-Za-z`     | Start a search                                                                                  |
+| `Escape`     | Exit search                                                                                     |
+| `Space`      | Play, pause, or start a song                                                                    |
+| `Enter`      | Start the currently selected song or search result                                              |
+| `ArrowLeft`  | Scrub backward (Hold `SHIFT` for fine and `CTRL` for rough scrubbing) or play the previous song |
+| `ArrowRight` | Scrub forward (Hold `SHIFT` for fine and `CTRL` for rough scrubbing)                            |
+| `ArrowUp`    | Play the previous song or select the previous search result                                     |
+| `ArrowDown`  | Play the next song or select the next search result                                             |
+| `Home`       | Skip to the beginning of the current song                                                       |
+| `End`        | Skip to the end of the current song                                                             |
 
 > **Note**: You can use your mouse wheel on the seekbar or album cover to adjust the volume.
 
