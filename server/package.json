@@ -7,7 +7,7 @@
 		"lint": "eslint --fix src",
 		"test": "mocha --exit",
 		"start": "node src/index.js",
-		"debug": "nodemon --inspect-brk src/index.js"
+		"debug": "nodemon src/index.js"
 	},
 	"repository": {
 		"type": "git",
