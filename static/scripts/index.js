@@ -392,8 +392,20 @@ class EventManager {
 				switch (e.code) {
 					case "ArrowLeft":
 						if (this.control) AudioManager.scrub(-20);
-						else if (this.shift) AudioManager.scrub(-1);
-						else if (AudioManager.getCurrentTime() < 1) SongManager.playPreviousSong();
+						else if (AudioManager.getCurrentTime() < 5) {
+							if (this.confirmedPlayPrevious) {
+								this.confirmedPlayPrevious = false;
+								SongManager.playPreviousSong();
+								return;
+							}
+							else {
+								this.confirmedPlayPrevious = true;
+								setTimeout(() => this.confirmedPlayPrevious = false, 2000);
+								PopupManager.showPopup("Previous?", 2000);
+							}
+						}
+
+						if (this.shift) AudioManager.scrub(-1);
 						else AudioManager.scrub(-5);
 						return;
 					case "ArrowRight":
