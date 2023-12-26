@@ -397,8 +397,12 @@ class EventManager {
 						AudioManager.changeVolume(false);
 						return;
 					case "KeyA":
-						e.preventDefault();
-						AnimationManager.toggleAnimations();
+						if (
+							!SearchManager.isActive() || !SearchManager.isSearchSelected()
+						) {
+							e.preventDefault();
+							AnimationManager.toggleAnimations();
+						}
 						return;
 					case "KeyM":
 						e.preventDefault();
@@ -413,16 +417,10 @@ class EventManager {
 						SongManager.toggleSortByModifiedDate();
 						return;
 					case "KeyP":
-						if (
-							!SearchManager.isSearchSelected() ||
-							!SearchManager.isActive()
-						) {
-							e.preventDefault();
-							PlayModeManager.rotatePlayMode();
-						}
+						e.preventDefault();
+						PlayModeManager.rotatePlayMode();
 						return;
 					case "KeyE":
-						// TODO: Remove this once not needed anymore
 						e.preventDefault();
 						ApiManager.rotateEndpoint();
 						return;
