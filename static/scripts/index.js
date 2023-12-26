@@ -172,14 +172,24 @@ class SeekbarManager {
 		let mouseDownOriginIsSeekbar = false;
 
 		const onSeek = (time, x) => {
+
 			mouseDownOriginIsSeekbar = true;
 
 			AudioManager.pause();
 
-			(document.onmousemove = setProgress)({ time, x });
+			// Update the progress instantly.
+			setProgress({ time, x })
+
+			document.onmousemove = (e) => {
+				this.setInstantProgressBar();
+
+				setProgress(e)
+			}
 		};
 
 		const onSeekStop = (time, x) => {
+			this.setSmoothProgressBar();
+
 			if (!mouseDownOriginIsSeekbar) return;
 			mouseDownOriginIsSeekbar = false;
 
@@ -234,6 +244,20 @@ class SeekbarManager {
 		SongManager.getCurrentSong()
 			.getMarker()
 			.forEach((marker) => this.addMarkerToSeekbar(marker));
+	}
+
+	static setSmoothProgressBar() {
+		if (this.isSmooth) return;
+		this.isSmooth = true;
+
+		this.progress.classList.add("seekbar-smooth");
+	}
+
+	static setInstantProgressBar() {
+		if (!this.isSmooth) return;
+		this.isSmooth = false;
+
+		this.progress.classList.remove("seekbar-smooth");
 	}
 
 	static addMarker() {
@@ -335,6 +359,11 @@ class SeekbarManager {
 		this.progress.style.width = progress * 100 + "%";
 
 		const currentTime = AudioManager.getDuration() * progress;
+
+		// Prevent updating the current time too often.
+		if (Math.abs(currentTime - this.lastTimeUpdate) < 1) return;
+		this.lastTimeUpdate = currentTime;
+
 		this.currentTimeText.innerText = this.formatMinutes(currentTime);
 	}
 
@@ -978,10 +1007,13 @@ class AudioManager {
 			SeekbarManager.setDuration(this.getDuration())
 		);
 
-		this.songAudio.ontimeupdate = () => {
-			if (this.songAudio.readyState > 0)
-				SeekbarManager.setProgress(this.getCurrentTime() / this.getDuration());
+		const updateSeekbar = () => {
+			SeekbarManager.setProgress(this.getCurrentTime() / this.getDuration());
+
+			requestAnimationFrame(updateSeekbar);
 		};
+		requestAnimationFrame(updateSeekbar);
+
 
 		this.songAudio.onended = async () => {
 			switch (PlayModeManager.getCurrentPlayMode()) {

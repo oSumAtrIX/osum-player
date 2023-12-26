@@ -319,7 +319,11 @@
 
 .marker,
 #seekbar-progress {
-	transition: height .2s;
+	transition: height .1s ease-out;
+}
+
+.seekbar-smooth {
+	transition: height .1s ease-out, width .2s ease-out !important
 }
 
 .marker {
