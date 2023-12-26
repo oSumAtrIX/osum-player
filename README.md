@@ -91,6 +91,8 @@ Access the player from any device.
 - `ArrowRight`: Scrub forwards (Hold `SHIFT` for fine and `CTRL` for rough scrubbing)
 - `ArrowUp`: Play previous song or select previous search result
 - `ArrowDown`: Play next song or select previous search result
+- `Home`: Skip to the beginning of the current song
+- `End`: Skip to the end of the current song
 
 > **Note**: You can use your mouse wheel on the seekbar or album cover to adjust the volume.
 
