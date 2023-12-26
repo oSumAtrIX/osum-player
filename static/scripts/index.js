@@ -364,8 +364,8 @@ class EventManager {
 					case "ArrowLeft":
 						if (this.control) AudioManager.scrub(-20);
 						else if (this.shift) AudioManager.scrub(-1);
+						else if (AudioManager.getCurrentTime() < 1) SongManager.playPreviousSong();
 						else AudioManager.scrub(-5);
-
 						return;
 					case "ArrowRight":
 						if (this.control) AudioManager.scrub(20);
@@ -667,6 +667,7 @@ class PlayModeManager {
 
 class SongManager {
 	static {
+		this.history = [];
 		this.image = $("#image");
 		this.songList = $("#song-list");
 		this.songItem = $("#song-item-template").content.firstElementChild;
@@ -806,7 +807,27 @@ class SongManager {
 		return newSongs;
 	}
 
+	static playPreviousSong() {
+		if (this.history.length <= 1) {
+			AudioManager.setProgress(0);
+			AudioManager.scrub(-1);
+			return;
+		}
+
+		this.history.pop(); // Remove current song.
+
+		this.playSongAndSetActive(this.history.pop()); // Play previous song.
+	}
+
+	static playSongAndSetActive(song) {
+		this.playSong(song);
+		this.setActiveById(song.id);
+	}
+
 	static playSong(song) {
+		if (this.history[this.history.length - 1] != song)
+			this.history.push(song);
+
 		this.currentSong = song;
 
 		this.currentSong.loadMarker();
@@ -970,8 +991,7 @@ class AudioManager {
 				case PlayModeManager.RANDOM:
 					const song = await ApiManager.getRandomSong();
 					SongManager.add(song);
-					SongManager.playSong(song);
-					SongManager.setActiveById(song.id);
+					SongManager.playSongAndSetActive(song);
 					break;
 				case PlayModeManager.REPEAT:
 					this.play();

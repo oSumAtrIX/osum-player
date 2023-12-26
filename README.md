@@ -43,6 +43,7 @@ Access the player from any device.
 - Autoplay
 - Searching
 - Marker
+- History
 
 ## 🪛 Server setup
 
@@ -86,8 +87,8 @@ Access the player from any device.
 - `Escape`: Close search
 - `Space`: Play, pause or start a song
 - `Enter`: Start the currently selected song or search result
-- `ArrowLeft`: Scrub forwards (Hold `SHIFT` for fine and `CTRL` for rough scrubbing)
-- `ArrowRight`: Scrub backwards (Hold `SHIFT` for fine and `CTRL` for rough scrubbing)
+- `ArrowLeft`: Scrub backwards (Hold `SHIFT` for fine and `CTRL` for rough scrubbing) or play previous song
+- `ArrowRight`: Scrub forwards (Hold `SHIFT` for fine and `CTRL` for rough scrubbing)
 - `ArrowUp`: Play previous song or select previous search result
 - `ArrowDown`: Play next song or select previous search result
 
