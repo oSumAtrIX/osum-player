@@ -22,7 +22,6 @@
 #song-list {
 	min-width: 600px;
 	max-width: 70%;
-	padding: 20px;
 	height: 80%;
 	min-width: 70%;
 	max-width: 70%;
@@ -130,7 +129,6 @@
 	transition: color 0.1s, padding 0.1s, letter-spacing 0.1s;
 }
 
-
 @keyframes opacity {
 	0% {
 		opacity: 0;
@@ -167,6 +165,7 @@
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
+	overflow: hidden;
 }
 
 .search-result-song-image-title-container {
@@ -320,7 +319,11 @@
 
 .marker,
 #seekbar-progress {
-	transition: height .2s;
+	transition: height .1s ease-out;
+}
+
+.seekbar-smooth {
+	transition: height .1s ease-out, width .2s ease-out !important
 }
 
 .marker {
@@ -369,7 +372,10 @@
 	background-color: var(--ternary);
 	border-radius: 0.1rem;
 	transition: all 0s;
+}
 
+.song-item:hover {
+	font-weight: 700;
 }
 
 .song-item-active {
@@ -383,7 +389,7 @@
 ::-webkit-scrollbar {
 	border-radius: 10px;
 	display: none;
-	width: 10px
+	width: 10px;
 }
 
 ::-webkit-scrollbar-thumb {

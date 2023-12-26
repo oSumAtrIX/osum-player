@@ -172,14 +172,24 @@ class SeekbarManager {
 		let mouseDownOriginIsSeekbar = false;
 
 		const onSeek = (time, x) => {
+
 			mouseDownOriginIsSeekbar = true;
 
 			AudioManager.pause();
 
-			(document.onmousemove = setProgress)({ time, x });
+			// Update the progress instantly.
+			setProgress({ time, x })
+
+			document.onmousemove = (e) => {
+				this.setInstantProgressBar();
+
+				setProgress(e)
+			}
 		};
 
 		const onSeekStop = (time, x) => {
+			this.setSmoothProgressBar();
+
 			if (!mouseDownOriginIsSeekbar) return;
 			mouseDownOriginIsSeekbar = false;
 
@@ -234,6 +244,20 @@ class SeekbarManager {
 		SongManager.getCurrentSong()
 			.getMarker()
 			.forEach((marker) => this.addMarkerToSeekbar(marker));
+	}
+
+	static setSmoothProgressBar() {
+		if (this.isSmooth) return;
+		this.isSmooth = true;
+
+		this.progress.classList.add("seekbar-smooth");
+	}
+
+	static setInstantProgressBar() {
+		if (!this.isSmooth) return;
+		this.isSmooth = false;
+
+		this.progress.classList.remove("seekbar-smooth");
 	}
 
 	static addMarker() {
@@ -335,6 +359,11 @@ class SeekbarManager {
 		this.progress.style.width = progress * 100 + "%";
 
 		const currentTime = AudioManager.getDuration() * progress;
+
+		// Prevent updating the current time too often.
+		if (Math.abs(currentTime - this.lastTimeUpdate) < 1) return;
+		this.lastTimeUpdate = currentTime;
+
 		this.currentTimeText.innerText = this.formatMinutes(currentTime);
 	}
 
@@ -364,8 +393,8 @@ class EventManager {
 					case "ArrowLeft":
 						if (this.control) AudioManager.scrub(-20);
 						else if (this.shift) AudioManager.scrub(-1);
+						else if (AudioManager.getCurrentTime() < 1) SongManager.playPreviousSong();
 						else AudioManager.scrub(-5);
-
 						return;
 					case "ArrowRight":
 						if (this.control) AudioManager.scrub(20);
@@ -383,7 +412,7 @@ class EventManager {
 						AudioManager.toggle();
 						return;
 					case "Enter":
-						if (AudioManager.isPaused()) SongManager.playCurrentSongItem();
+						SongManager.playCurrentSongItem();
 						return;
 				}
 			}
@@ -397,8 +426,12 @@ class EventManager {
 						AudioManager.changeVolume(false);
 						return;
 					case "KeyA":
-						e.preventDefault();
-						AnimationManager.toggleAnimations();
+						if (
+							!SearchManager.isActive() || !SearchManager.isSearchSelected()
+						) {
+							e.preventDefault();
+							AnimationManager.toggleAnimations();
+						}
 						return;
 					case "KeyM":
 						e.preventDefault();
@@ -413,16 +446,10 @@ class EventManager {
 						SongManager.toggleSortByModifiedDate();
 						return;
 					case "KeyP":
-						if (
-							!SearchManager.isSearchSelected() ||
-							!SearchManager.isActive()
-						) {
-							e.preventDefault();
-							PlayModeManager.rotatePlayMode();
-						}
+						e.preventDefault();
+						PlayModeManager.rotatePlayMode();
 						return;
 					case "KeyE":
-						// TODO: Remove this once not needed anymore
 						e.preventDefault();
 						ApiManager.rotateEndpoint();
 						return;
@@ -669,6 +696,7 @@ class PlayModeManager {
 
 class SongManager {
 	static {
+		this.history = [];
 		this.image = $("#image");
 		this.songList = $("#song-list");
 		this.songItem = $("#song-item-template").content.firstElementChild;
@@ -808,7 +836,27 @@ class SongManager {
 		return newSongs;
 	}
 
+	static playPreviousSong() {
+		if (this.history.length <= 1) {
+			AudioManager.setProgress(0);
+			AudioManager.scrub(-1);
+			return;
+		}
+
+		this.history.pop(); // Remove current song.
+
+		this.playSongAndSetActive(this.history.pop()); // Play previous song.
+	}
+
+	static playSongAndSetActive(song) {
+		this.playSong(song);
+		this.setActiveById(song.id);
+	}
+
 	static playSong(song) {
+		if (this.history[this.history.length - 1] != song)
+			this.history.push(song);
+
 		this.currentSong = song;
 
 		this.currentSong.loadMarker();
@@ -959,10 +1007,13 @@ class AudioManager {
 			SeekbarManager.setDuration(this.getDuration())
 		);
 
-		this.songAudio.ontimeupdate = () => {
-			if (this.songAudio.readyState > 0)
-				SeekbarManager.setProgress(this.getCurrentTime() / this.getDuration());
+		const updateSeekbar = () => {
+			SeekbarManager.setProgress(this.getCurrentTime() / this.getDuration());
+
+			requestAnimationFrame(updateSeekbar);
 		};
+		requestAnimationFrame(updateSeekbar);
+
 
 		this.songAudio.onended = async () => {
 			switch (PlayModeManager.getCurrentPlayMode()) {
@@ -972,8 +1023,7 @@ class AudioManager {
 				case PlayModeManager.RANDOM:
 					const song = await ApiManager.getRandomSong();
 					SongManager.add(song);
-					SongManager.playSong(song);
-					SongManager.setActiveById(song.id);
+					SongManager.playSongAndSetActive(song);
 					break;
 				case PlayModeManager.REPEAT:
 					this.play();
