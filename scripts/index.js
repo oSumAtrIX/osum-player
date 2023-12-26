@@ -392,8 +392,20 @@ class EventManager {
 				switch (e.code) {
 					case "ArrowLeft":
 						if (this.control) AudioManager.scrub(-20);
-						else if (this.shift) AudioManager.scrub(-1);
-						else if (AudioManager.getCurrentTime() < 1) SongManager.playPreviousSong();
+						else if (AudioManager.getCurrentTime() < 5) {
+							if (this.confirmedPlayPrevious) {
+								this.confirmedPlayPrevious = false;
+								SongManager.playPreviousSong();
+								return;
+							}
+							else {
+								this.confirmedPlayPrevious = true;
+								setTimeout(() => this.confirmedPlayPrevious = false, 2000);
+								PopupManager.showPopup("Previous?", 2000);
+							}
+						}
+
+						if (this.shift) AudioManager.scrub(-1);
 						else AudioManager.scrub(-5);
 						return;
 					case "ArrowRight":
@@ -414,6 +426,13 @@ class EventManager {
 					case "Enter":
 						SongManager.playCurrentSongItem();
 						return;
+					case "Home":
+						PopupManager.showPopup("Start");
+						AudioManager.toStart();
+						return;
+					case "End":
+						PopupManager.showPopup("End");
+						AudioManager.toEnd();
 				}
 			}
 
@@ -838,7 +857,7 @@ class SongManager {
 
 	static playPreviousSong() {
 		if (this.history.length <= 1) {
-			AudioManager.setProgress(0);
+			AudioManager.toStart();
 			AudioManager.scrub(-1);
 			return;
 		}
@@ -867,7 +886,7 @@ class SongManager {
 		AudioManager.play();
 
 		// instantly update seekbar
-		SeekbarManager.setProgress(0);
+		SeekbarManager.toString();
 		SeekbarManager.showSeekbar();
 	}
 
@@ -1035,6 +1054,14 @@ class AudioManager {
 
 		SeekbarManager.getSeekbar().onwheel = changeVolume;
 		SongManager.getImage().onwheel = changeVolume;
+	}
+
+	static toEnd() {
+		this.setProgress(this.getDuration());
+	}
+
+	static toStart() {
+		this.setProgress(0);
 	}
 
 	static pauseImage() {
