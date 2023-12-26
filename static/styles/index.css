@@ -368,7 +368,10 @@
 	background-color: var(--ternary);
 	border-radius: 0.1rem;
 	transition: all 0s;
+}
 
+.song-item:hover {
+	font-weight: 700;
 }
 
 .song-item-active {
