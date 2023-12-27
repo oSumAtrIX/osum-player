@@ -623,17 +623,17 @@ class ApiManager {
 
 	static setEndpoint(endpoint) {
 		if (this.currentEndpoint == endpoint) return;
-
 		this.currentEndpoint = endpoint;
 
 		PopupManager.showPopup(endpoint);
 	}
 
-	static reloadSongs() {
+	static async reloadSongs() {
 		PopupManager.showPopup("Reloading");
-		return this.request("/songs/reload", this.sendOption()).then(() =>
-			window.location.reload()
-		);
+
+		await this.request("/songs/reload", this.sendOption()).catch(() => { });
+
+		window.location.reload();
 	}
 
 	// TODO: make use of limit and offset
@@ -1517,7 +1517,12 @@ ApiManager.ping().then(() =>
 	])
 ).catch((e) => {
 	console.log(e)
-	initialize([EventManager, PopupManager]);
+
+	// Minimum initialization after failure to connect to the API.
+	initialize([
+		EventManager,
+		PopupManager,
+	]);
 
 	PopupManager.showPopup("Disconnected", PopupManager.PERMANENT);
 })
