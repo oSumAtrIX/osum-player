@@ -101,16 +101,23 @@ class Song {
 }
 
 class PopupManager {
-	static {
+	static initialize() {
+		this.PERMANENT = -1;
+
 		this.popup = $("#popup");
-		this.popupText = $("#popup-text");
+		this.popupContent = $("#popup-text");
 	}
 
-	static showPopup(text, duration = 1000) {
-		// show popup
-		this.popupText.innerText = text;
+	static showPopup(content, duration = 1000) {
+		// Avoid XSS
+		if (typeof content === "string")
+			this.popupContent.innerText = content;
+		else
+			this.popupContent.innerHTML = content;
 
 		this.popup.classList.add("popup-active");
+
+		if (duration < 0) return;
 
 		clearTimeout(this.popupActive);
 		this.popupActive = setTimeout(
@@ -121,7 +128,7 @@ class PopupManager {
 }
 
 class SeekbarManager {
-	static {
+	static initialize() {
 		this.seekbar = $("#seekbar");
 		this.marker = $("#marker-template").content.firstElementChild;
 
@@ -322,7 +329,6 @@ class SeekbarManager {
 
 		this.currentTime.classList.add("current-time-active");
 		this.knobCircle.classList.add("knob-circle-active");
-		this.knob.classList.add("knob-hover");
 		this.progress.classList.add("seekbar-hover");
 
 		this.seekbar.appendChild(this.markerHoverStyle);
@@ -335,7 +341,6 @@ class SeekbarManager {
 
 		this.currentTime.classList.remove("current-time-active");
 		this.knobCircle.classList.remove("knob-circle-active");
-		this.knob.classList.remove("knob-hover");
 		this.progress.classList.remove("seekbar-hover");
 
 		this.seekbar.removeChild(this.markerHoverStyle);
@@ -375,16 +380,62 @@ class SeekbarManager {
 	}
 }
 
+class ThemeManager {
+	static initialize() {
+		const root = document.querySelector(":root");
+		const color = localStorage.getItem("highlight") || getComputedStyle(root).getPropertyValue("--highlight");
+		this.setTheme(color);
+	}
+
+	static setTheme(color) {
+		localStorage.setItem("highlight", color);
+
+		const root = document.querySelector(":root");
+		root.style.setProperty("--highlight", color);
+	}
+
+	static rotateTheme() {
+		const rotation = Math.round(Math.random() * 360);
+
+		PopupManager.showPopup(rotation);
+
+		this.setTheme(`hsl(${rotation}, 100%, 50%)`);
+	}
+
+	static resetTheme() {
+		this.setTheme("#FF003D");
+	}
+}
+
 class EventManager {
-	static {
+	static initialize() {
 		document.onkeydown = (e) => {
-			if (e.code == "Space") {
-				if (this.space) return;
-				this.space = true;
+			switch (e.code) {
+				case "ControlLeft":
+					this.control = true;
+				case "Space":
+					if (this.space) return;
+					this.space = true;
+				case "ShiftLeft":
+					this.shift = true;
 			}
 
-			if (e.code == "ShiftLeft") this.shift = true;
-			if (e.code == "ControlLeft") this.control = true;
+			if (!ApiManager.isConnected()) {
+				if (this.control) {
+					switch (e.code) {
+						case "KeyE":
+							e.preventDefault();
+							ApiManager.rotateEndpoint();
+							return;
+						case "KeyR":
+							e.preventDefault();
+							ApiManager.reloadSongs();
+							return;
+					}
+				}
+
+				return;
+			}
 
 			if (!SearchManager.isActive()) {
 				e.preventDefault();
@@ -476,7 +527,13 @@ class EventManager {
 						e.preventDefault();
 						ApiManager.reloadSongs();
 						return;
+					case "KeyH":
+						e.preventDefault();
+						ThemeManager.rotateTheme();
+						return;
 				}
+
+				return;
 			}
 
 			if (SearchManager.isActive()) {
@@ -518,7 +575,7 @@ class EventManager {
 }
 
 class ApiManager {
-	static {
+	static initialize() {
 		this.apiVersion = 1;
 
 		this.defaultEndpoints = ["https://demomusicapi.osumatrix.me", "http://localhost:3000"];
@@ -587,17 +644,17 @@ class ApiManager {
 
 	static setEndpoint(endpoint) {
 		if (this.currentEndpoint == endpoint) return;
-
 		this.currentEndpoint = endpoint;
 
 		PopupManager.showPopup(endpoint);
 	}
 
-	static reloadSongs() {
+	static async reloadSongs() {
 		PopupManager.showPopup("Reloading");
-		return this.request("/songs/reload", this.sendOption()).then(() =>
-			window.location.reload()
-		);
+
+		await this.request("/songs/reload", this.sendOption()).catch(() => { });
+
+		window.location.reload();
 	}
 
 	// TODO: make use of limit and offset
@@ -666,6 +723,14 @@ class ApiManager {
 		});
 	}
 
+	static async ping() {
+		return this.request("/").then(() => this.connected = true)
+	}
+
+	static isConnected() {
+		return this.connected;
+	}
+
 	static getApi() {
 		return `${this.currentEndpoint}/api/v${this.apiVersion}`;
 	}
@@ -683,15 +748,15 @@ class ApiManager {
 }
 
 class PlayModeManager {
-	static {
+	static initialize() {
 		this.AUTOPLAY = 0;
-		this.RANDOM = 1;
+		this.SHUFFLE = 1;
 		this.REPEAT = 2;
 		this.ONCE = 3;
 
 		this.playModes = new Map([
 			[this.AUTOPLAY, "Autoplay"],
-			[this.RANDOM, "Random"],
+			[this.SHUFFLE, "Shuffle"],
 			[this.REPEAT, "Repeat"],
 			[this.ONCE, "Once"],
 		]);
@@ -714,7 +779,7 @@ class PlayModeManager {
 }
 
 class SongManager {
-	static {
+	static initialize() {
 		this.history = [];
 		this.image = $("#image");
 		this.songList = $("#song-list");
@@ -757,9 +822,7 @@ class SongManager {
 			AudioManager.toggle();
 		};
 
-		this.getNewSongs().catch((_) => {
-			PopupManager.showPopup("Disconnected", 60 * 1000);
-		})
+		this.getNewSongs()
 	}
 
 	static isSortedByModifiedDate() {
@@ -992,7 +1055,7 @@ class SongManager {
 }
 
 class AudioManager {
-	static {
+	static initialize() {
 		this.songAudio = new Audio();
 		this.interactionAudio = new Audio("assets/interaction.wav");
 		this.interactionAudio.volume = 0;
@@ -1039,7 +1102,7 @@ class AudioManager {
 				case PlayModeManager.AUTOPLAY:
 					SongManager.selectNextAndPlay();
 					break;
-				case PlayModeManager.RANDOM:
+				case PlayModeManager.SHUFFLE:
 					const song = await ApiManager.getRandomSong();
 					SongManager.add(song);
 					SongManager.playSongAndSetActive(song);
@@ -1188,7 +1251,7 @@ class AudioManager {
 }
 
 class SearchManager {
-	static {
+	static initialize() {
 		this.searchInputIsSelected = false;
 		this.visible = false;
 		this.search = $("#search-main");
@@ -1345,20 +1408,12 @@ class SearchManager {
 }
 
 class AnimationManager {
-	static {
+	static initialize() {
 		this.animationsEnabled = localStorage.getItem("animationsEnabled") || true;
 		this.image = $("#image");
 		this.breathingAnimationInterval = null;
 
-		this.animateImage = (x, y) => {
-			image.style.transform = `
-				perspective(10px)
-				translate(${x * 0.05}px, ${y * 0.05}px)
-				rotateX(${0.00008 * -y}deg) 
-				rotateY(${0.00008 * x}deg)
-				rotate(${0.00003 * x * y}deg)
-			`;
-		};
+		this.animateImage = (x, y) => image.style.transform = `perspective(600px) translate(${x * 16}px, ${y * 16}px) rotateX(${-y}deg)  rotateY(${x}deg) rotate(${x * y * 0.8}deg)`;
 
 		let time = 0;
 		this.breathingAnimation = () => {
@@ -1367,8 +1422,8 @@ class AnimationManager {
 			time += 0.2;
 
 			this.animateImage(
-				Math.sin(time) * 50,
-				Math.cos(time / 2) * 50
+				Math.sin(time) * 0.5,
+				Math.cos(time / 2) * 0.5
 			);
 		};
 
@@ -1376,11 +1431,17 @@ class AnimationManager {
 			if (e.timeStamp - this.lastMouseMoveCall < 100) return;
 			this.lastMouseMoveCall = e.timeStamp;
 
-			const position = image.getBoundingClientRect();
-			const x = e.pageX - position.left - position.width / 2;
-			const y = e.pageY - position.top - position.height / 2;
+			const imagePosition = image.getBoundingClientRect();
 
-			this.animateImage(x, y);
+			const absoluteMouseX = e.pageX - imagePosition.left
+			const relativeMouseX = absoluteMouseX / imagePosition.width
+			const normalizedMouseX = (relativeMouseX - 0.5) * 2
+
+			const absoluteMouseY = e.pageY - imagePosition.top
+			const relativeMouseY = absoluteMouseY / imagePosition.height
+			const normalizedMouseY = (relativeMouseY - 0.5) * 2
+
+			this.animateImage(normalizedMouseX, normalizedMouseY);
 		};
 
 		this.imageOnMouseOut = () => {
@@ -1463,3 +1524,30 @@ class AnimationManager {
 		localStorage.setItem("animationsEnabled", this.animationsEnabled);
 	}
 }
+
+const initialize = (managers) => managers.forEach((manager) => manager.initialize());
+
+ApiManager.initialize();
+ApiManager.ping().then(() =>
+	initialize([
+		PopupManager,
+		SeekbarManager,
+		SongManager,
+		AudioManager,
+		EventManager,
+		PlayModeManager,
+		SearchManager,
+		AnimationManager,
+		ThemeManager,
+	])
+).catch((e) => {
+	console.log(e)
+
+	// Minimum initialization after failure to connect to the API.
+	initialize([
+		EventManager,
+		PopupManager,
+	]);
+
+	PopupManager.showPopup("Disconnected", PopupManager.PERMANENT);
+})
