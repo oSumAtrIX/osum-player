@@ -410,13 +410,32 @@ class ThemeManager {
 class EventManager {
 	static initialize() {
 		document.onkeydown = (e) => {
-			if (e.code == "Space") {
-				if (this.space) return;
-				this.space = true;
+			switch (e.code) {
+				case "ControlLeft":
+					this.control = true;
+				case "Space":
+					if (this.space) return;
+					this.space = true;
+				case "ShiftLeft":
+					this.shift = true;
 			}
 
-			if (e.code == "ShiftLeft") this.shift = true;
-			if (e.code == "ControlLeft") this.control = true;
+			if (!ApiManager.isConnected()) {
+				if (this.control) {
+					switch (e.code) {
+						case "KeyE":
+							e.preventDefault();
+							ApiManager.rotateEndpoint();
+							return;
+						case "KeyR":
+							e.preventDefault();
+							ApiManager.reloadSongs();
+							return;
+					}
+				}
+
+				return;
+			}
 
 			if (!SearchManager.isActive()) {
 				e.preventDefault();
@@ -513,6 +532,8 @@ class EventManager {
 						ThemeManager.rotateTheme();
 						return;
 				}
+
+				return;
 			}
 
 			if (SearchManager.isActive()) {
@@ -703,7 +724,11 @@ class ApiManager {
 	}
 
 	static async ping() {
-		return this.request("/");
+		return this.request("/").then(() => this.connected = true)
+	}
+
+	static isConnected() {
+		return this.connected;
 	}
 
 	static getApi() {
