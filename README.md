@@ -85,6 +85,7 @@ Access the player from any device.
 | `CTRL+Plus`  | Increase volume                                                                                 |
 | `CTRL+Minus` | Decrease volume                                                                                 |
 | `CTRL+R`     | Quick reload songs to update the database                                                       |
+| `CTRL+H`     | Rotate between random themes                                                                    |
 | `A-Za-z`     | Start a search                                                                                  |
 | `Escape`     | Exit search                                                                                     |
 | `Space`      | Play, pause, or start a song                                                                    |
@@ -114,12 +115,12 @@ Play with the album cover.
 - [x] Sort by newest modification date
 - [x] Marker
 - [x] Various play modes
+- [x] Rainbow seekbar (Rotate between themes)
 - [ ] Last.FM integration
 - [ ] Keybinds menu
 - [ ] Playlists
 - [ ] Queues
 - [ ] Sync live changes
-- [ ] Rainbow seekbar
 - [ ] Global hotkeys
 - [ ] Add new audio files with drag & drop
 - [ ] Share links

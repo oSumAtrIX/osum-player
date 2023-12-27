@@ -322,7 +322,6 @@ class SeekbarManager {
 
 		this.currentTime.classList.add("current-time-active");
 		this.knobCircle.classList.add("knob-circle-active");
-		this.knob.classList.add("knob-hover");
 		this.progress.classList.add("seekbar-hover");
 
 		this.seekbar.appendChild(this.markerHoverStyle);
@@ -335,7 +334,6 @@ class SeekbarManager {
 
 		this.currentTime.classList.remove("current-time-active");
 		this.knobCircle.classList.remove("knob-circle-active");
-		this.knob.classList.remove("knob-hover");
 		this.progress.classList.remove("seekbar-hover");
 
 		this.seekbar.removeChild(this.markerHoverStyle);
@@ -375,6 +373,32 @@ class SeekbarManager {
 	}
 }
 
+class ThemeManager {
+	static {
+		const root = document.querySelector(":root");
+		const color = localStorage.getItem("highlight") || getComputedStyle(root).getPropertyValue("--highlight");
+		this.setTheme(color);
+	}
+
+	static setTheme(color) {
+		localStorage.setItem("highlight", color);
+
+		const root = document.querySelector(":root");
+		root.style.setProperty("--highlight", color);
+	}
+
+	static rotateTheme() {
+		const rotation = Math.round(Math.random() * 360);
+
+		PopupManager.showPopup(rotation);
+
+		this.setTheme(`hsl(${rotation}, 100%, 50%)`);
+	}
+
+	static resetTheme() {
+		this.setTheme("#FF003D");
+	}
+}
 class EventManager {
 	static {
 		document.onkeydown = (e) => {
@@ -475,6 +499,10 @@ class EventManager {
 					case "KeyR":
 						e.preventDefault();
 						ApiManager.reloadSongs();
+						return;
+					case "KeyH":
+						e.preventDefault();
+						ThemeManager.rotateTheme();
 						return;
 				}
 			}
