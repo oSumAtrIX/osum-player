@@ -414,10 +414,13 @@ class EventManager {
 				case "ControlLeft":
 					this.control = true;
 				case "Space":
-					if (this.space) return;
 					this.space = true;
 				case "ShiftLeft":
 					this.shift = true;
+			}
+
+			if (this.control) {
+				AnimationManager.scaleMain(0.99);
 			}
 
 			if (!ApiManager.isConnected()) {
@@ -568,6 +571,11 @@ class EventManager {
 			if (e.code == "Space") this.space = false;
 			if (e.code == "ShiftLeft") this.shift = false;
 			if (e.code == "ControlLeft") this.control = false;
+
+			console.log(this.control)
+			if (!this.control) {
+				AnimationManager.scaleMain(1);
+			}
 		};
 
 		document.oncontextmenu = (e) => e.preventDefault();
@@ -1183,12 +1191,12 @@ class AudioManager {
 
 	static addVolume(amount) {
 		this.setVolume(this.getVolume() + amount);
+		this.playInteractionAudio();
 
 		AudioManager.showVolumePopup();
 	}
 
 	static setVolume(volume) {
-		this.playInteractionAudio();
 		// prevent illegal values
 		if (volume < 0) volume = 0;
 		else if (volume > 100) volume = 100;
@@ -1409,6 +1417,7 @@ class SearchManager {
 
 class AnimationManager {
 	static initialize() {
+		this.main = $("#main");
 		this.animationsEnabled = localStorage.getItem("animationsEnabled") || true;
 		this.image = $("#image");
 		this.breathingAnimationInterval = null;
@@ -1465,6 +1474,10 @@ class AnimationManager {
 		}
 
 		if (this.animationsEnabled) this.start();
+	}
+
+	static scaleMain(scale) {
+		this.main.style.scale = scale;
 	}
 
 	static stop() {
