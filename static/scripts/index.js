@@ -108,6 +108,8 @@ class Action {
 
 		this.TOGGLE_ON = true;
 		this.TOGGLE_OFF = false;
+
+		this.HIDDEN = "hidden_input";
 	}
 
 	constructor(name, action, type = Action.ACTION, update) {
@@ -716,7 +718,10 @@ class ApiManager {
 
 		await this.request("/songs/reload", this.sendOption()).catch(() => { });
 
-		window.location.reload();
+		AnimationManager.turnOff();
+		setTimeout(() => {
+			window.location.reload();
+		}, 1000);
 	}
 
 	// TODO: make use of limit and offset
@@ -1013,6 +1018,8 @@ class SongManager {
 		// instantly update seekbar
 		SeekbarManager.toString();
 		SeekbarManager.showSeekbar();
+
+		LastFMManager.updateNowPlaying(this.currentSong);
 	}
 
 	static playSongId(id) {
@@ -1162,7 +1169,6 @@ class AudioManager {
 		};
 		requestAnimationFrame(updateSeekbar);
 
-
 		this.songAudio.onended = async () => {
 			switch (PlayModeManager.getCurrentPlayMode()) {
 				case PlayModeManager.AUTOPLAY:
@@ -1247,7 +1253,19 @@ class AudioManager {
 	}
 
 	static play() {
-		if (this.songAudio.src) this.songAudio.play();
+		if (this.songAudio.src) {
+			this.songAudio.play();
+
+			this.songAudio.ontimeupdate = () => {
+				if (this.songAudio.currentTime < 30) return;
+
+				if (this.songAudio.currentTime >= this.songAudio.duration / 2 || this.songAudio.currentTime >= 4 * 60) {
+					LastFMManager.scrobble(SongManager.getCurrentSong());
+					this.songAudio.ontimeupdate = null;
+				}
+			}
+		}
+
 		else SongManager.selectNextAndPlay();
 	}
 
@@ -1263,13 +1281,10 @@ class AudioManager {
 	}
 
 	static setVolume(volume) {
-		// prevent illegal values
 		if (volume < 0) volume = 0;
 		else if (volume > 100) volume = 100;
 
 		localStorage.setItem("volume", volume);
-
-		// set volume
 
 		this.songAudio.volume = volume / 100;
 	}
@@ -1324,6 +1339,85 @@ class AudioManager {
 	}
 }
 
+class LastFMManager {
+	static initialize() {
+		this.apiKey = localStorage.getItem("lastfm-api-key")
+		this.apiSecret = localStorage.getItem("lastfm-api-secret")
+		this.session = JSON.parse(localStorage.getItem("lastfm-session"))
+
+		this.lastfm = new LastFM({
+			cache: new LastFMCache(),
+			apiKey: this.apiKey,
+			apiSecret: this.apiSecret,
+		});
+
+		if (this.session) this.authed = true;
+	}
+
+	static auth(apiKey, apiSecret) {
+		if (apiKey) {
+			this.lastfm.setApiKey(apiKey);
+			localStorage.setItem("lastfm-api-key", apiKey);
+			this.apiKey = apiKey;
+		}
+		if (apiSecret) {
+			this.lastfm.setApiSecret(apiSecret);
+			localStorage.setItem("lastfm-api-secret", apiSecret);
+			this.apiSecret = apiSecret;
+		}
+
+		this.lastfm.auth.getToken({
+			success: (data) => {
+				window.open(`https://www.last.fm/api/auth?api_key=${this.apiKey}&token=${data.token}`, "_blank");
+				localStorage.setItem("lastfm-token", data.token);
+
+				var attemptsLeft = 10;
+				clearInterval(this.authAttempt);
+				this.authAttempt = setInterval(() => {
+					this.lastfm.auth.getSession({
+						token: data.token,
+					}, {
+						success: (data) => {
+							localStorage.setItem("lastfm-session", JSON.stringify(data.session));
+							this.session = data.session;
+							PopupManager.showPopup("Last.FM authenticated", 2000);
+							this.authed = true;
+							clearInterval(this.authAttempt);
+						}
+					})
+
+					if (attemptsLeft-- == 0) {
+						this.warnNotAuthed();
+						clearInterval(this.authAttempt);
+					}
+				}, 5000);
+			}
+		})
+	}
+
+	static updateNowPlaying(song) {
+		if (!this.authed) return this.warnNotAuthed();
+
+		this.lastfm.track.updateNowPlaying({ artist: song.artist, track: song.title }, this.session);
+		this.timestamp = Math.floor(Date.now() / 1000);
+	}
+
+	static scrobble(song) {
+		if (!this.authed) return this.warnNotAuthed();
+
+		if (this.lastScrobble == song) return;
+		this.lastScrobble = song;
+
+		this.lastfm.track.scrobble({ artist: song.artist, track: song.title, timestamp: this.timestamp }, this.session);
+	}
+
+	static warnNotAuthed() {
+		if (this.showedWarning) return;
+		PopupManager.showPopup("Last.FM not authenticated", 2000);
+		this.showedWarning = true;
+	}
+}
+
 class ActionManager {
 	static initialize() {
 		this.actions = [
@@ -1331,8 +1425,12 @@ class ActionManager {
 			new Action("Pause", () => AudioManager.pause(), Action.ACTION, "Pause the current song"),
 			new Action("Endpoint", (a) => ApiManager.setAndSaveEndpoint(a.value), Action.INPUT, () => ApiManager.getCurrentEndpoint()),
 			new Action("Animations", () => AnimationManager.toggleAnimations(), Action.TOGGLE, () => AnimationManager.isAnimationsEnabled() ? Action.TOGGLE_OFF : Action.TOGGLE_ON),
-			new Action("Auth", (a) => ApiManager.setAuthorizationToken(a.value), Action.INPUT, "Hidden"),
+			new Action("Auth", (a) => ApiManager.setAuthorizationToken(a.value), Action.INPUT, Action.HIDDEN),
 			new Action("Theme", (a) => ThemeManager.setTheme(a.value), Action.INPUT, () => ThemeManager.getTheme()),
+			new Action("Last.FM (Input format: <key> <secret>)", (a) => {
+				const [apiKey, apiSecret] = a.value.split(" ");
+				LastFMManager.auth(apiKey, apiSecret);
+			}, Action.INPUT, Action.HIDDEN),
 		];
 
 		this.actionsByName = new Map();
@@ -1415,17 +1513,19 @@ class SearchManager {
 		this.clearSearchInput();
 		this.selectSearchInput();
 
-		this.searchInput.value = action.value;
+		if (action.value != Action.HIDDEN)
+			this.searchInput.value = action.value;
 	}
 
 	static exitActionInputModeAndToggle() {
 		SearchManager.toggle();
 	}
 
-	static exitActionInputMode() {
+	static exitActionInputMode(select = false) {
 		if (!this.isActionInputMode()) return;
 
-		this.currentAction.select();
+		if (select)
+			this.currentAction.select();
 		this.actionInputMode = false;
 		this.currentAction = null;
 		this.searchInput.value = this.lastSearchInputValue;
@@ -1575,7 +1675,7 @@ class SearchManager {
 		resultItem.name = action.name;
 
 		$(".search-result-action-name", resultItem).innerText = action.name;
-		$(".search-result-action-value", resultItem).innerText = action.value;
+		$(".search-result-action-value", resultItem).innerText = action.value == Action.HIDDEN ? "Hidden" : action.value;
 
 		this.results.appendChild(resultItem);
 	}
@@ -1608,7 +1708,7 @@ class SearchManager {
 	static toggle() {
 		if (this.visible) {
 			this.search.classList.remove("search-active");
-			this.exitActionInputMode()
+			this.exitActionInputMode(true)
 
 			// wait for animation to finish
 			setTimeout(() => {
@@ -1687,6 +1787,10 @@ class AnimationManager {
 		}
 
 		if (this.animationsEnabled) this.start();
+	}
+
+	static turnOff() {
+		document.body.style.opacity = 0;
 	}
 
 	static fade(fade) {
@@ -1768,6 +1872,7 @@ ApiManager.initialize();
 ApiManager.ping().then(() =>
 	initialize([
 		PopupManager,
+		LastFMManager,
 		SeekbarManager,
 		SongManager,
 		AudioManager,
