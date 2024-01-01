@@ -540,6 +540,8 @@ class EventManager {
 			}
 
 			if (SearchManager.isActive()) {
+				AudioManager.playTypingAudio();
+
 				switch (e.code) {
 					case "ArrowUp":
 						e.preventDefault();
@@ -558,6 +560,7 @@ class EventManager {
 				}
 			} else {
 				if (e.keyCode >= 48 && e.keyCode <= 90) {
+					AudioManager.playTypingAudio();
 					SearchManager.toggle();
 					SearchManager.searchInput.value = e.key;
 					SearchManager.updateSearch();
@@ -572,7 +575,6 @@ class EventManager {
 			if (e.code == "ShiftLeft") this.shift = false;
 			if (e.code == "ControlLeft") this.control = false;
 
-			console.log(this.control)
 			if (!this.control) {
 				AnimationManager.scaleMain(1);
 			}
@@ -1064,10 +1066,13 @@ class SongManager {
 
 class AudioManager {
 	static initialize() {
-		this.songAudio = new Audio();
-		this.interactionAudio = new Audio("assets/interaction.wav");
-		this.interactionAudio.volume = 0;
 		this.imagePaused = false;
+
+		this.songAudio = new Audio();
+
+		this.interactionAudio = new Audio("assets/interaction.wav");
+
+		this.keys = [...Array(4)].map((_, i) => new Audio(`assets/key${i}.mp3`));
 
 		this.setVolume(localStorage.getItem("volume") || 50);
 
@@ -1151,13 +1156,25 @@ class AudioManager {
 		this.imagePaused = false;
 	}
 
+	static playTypingAudio() {
+
+	}
+
 	static playInteractionAudio(wait = 0) {
 		if (Date.now() - this.lastInteractionAudioPlay < wait) return;
 		this.lastInteractionAudioPlay = Date.now();
 
-		this.interactionAudio.volume = this.getVolume() / 100;
-		this.interactionAudio.currentTime = 0;
-		this.interactionAudio.play();
+		this.playAudio(this.interactionAudio);
+	}
+
+	static playTypingAudio() {
+		this.playAudio(this.keys[Math.floor(Math.random() * this.keys.length)]);
+	}
+
+	static playAudio(audio) {
+		audio.volume = this.getVolume() / 100;
+		audio.currentTime = 0;
+		audio.play();
 	}
 
 	static changeVolume(increase = true) {
