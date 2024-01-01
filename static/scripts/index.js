@@ -1007,7 +1007,6 @@ class SongManager {
 			this.history.push(song);
 
 		this.currentSong = song;
-
 		this.currentSong.loadMarker();
 
 		this.image.src = this.currentSong.getFullImage();
@@ -1015,11 +1014,14 @@ class SongManager {
 		AudioManager.setSong(this.currentSong);
 		AudioManager.play();
 
-		// instantly update seekbar
 		SeekbarManager.toString();
 		SeekbarManager.showSeekbar();
 
 		LastFMManager.updateNowPlaying(this.currentSong);
+
+		document.title = `${song.artist} - ${song.title}`;
+		$("link[rel='icon']").href = song.image;
+
 	}
 
 	static playSongId(id) {
