@@ -100,6 +100,37 @@ class Song {
 	}
 }
 
+class Action {
+	static {
+		this.INPUT = "input";
+		this.TOGGLE = "toggle";
+		this.ACTION = "action";
+
+		this.TOGGLE_ON = true;
+		this.TOGGLE_OFF = false;
+	}
+
+	constructor(name, action, type = Action.ACTION, update) {
+		this.name = name;
+		this.action = action;
+		this.type = type;
+
+		this.update = update;
+		this.updateValue()
+	}
+
+	updateValue() {
+		this.value = typeof this.update === "function" ? this.update() : this.update;
+	}
+
+	select() {
+		if (this.type == Action.TOGGLE)
+			this.value = !this.value;
+
+		this.action(this)
+	}
+}
+
 class PopupManager {
 	static initialize() {
 		this.PERMANENT = -1;
@@ -153,6 +184,7 @@ class SeekbarManager {
 			}`;
 
 		this.seekbarShrunken = true;
+		this.setSmoothProgressBar();
 
 		// the last x position of the mouse on the seekbar
 		this.lastProgressX = 0;
@@ -188,7 +220,9 @@ class SeekbarManager {
 			setProgress({ time, x })
 
 			document.onmousemove = (e) => {
-				this.setInstantProgressBar();
+				if (Math.abs(this.lastProgressX - e.clientX) > 20) {
+					this.setInstantProgressBar();
+				}
 
 				setProgress(e)
 			}
@@ -254,15 +288,15 @@ class SeekbarManager {
 	}
 
 	static setSmoothProgressBar() {
-		if (this.isSmooth) return;
-		this.isSmooth = true;
+		if (this.smoothSeekbar) return;
+		this.smoothSeekbar = true;
 
 		this.progress.classList.add("seekbar-smooth");
 	}
 
 	static setInstantProgressBar() {
-		if (!this.isSmooth) return;
-		this.isSmooth = false;
+		if (!this.smoothSeekbar) return;
+		this.smoothSeekbar = false;
 
 		this.progress.classList.remove("seekbar-smooth");
 	}
@@ -394,6 +428,10 @@ class ThemeManager {
 		root.style.setProperty("--highlight", color);
 	}
 
+	static getTheme() {
+		return getComputedStyle(document.querySelector(":root")).getPropertyValue("--highlight");
+	}
+
 	static rotateTheme() {
 		const rotation = Math.round(Math.random() * 360);
 
@@ -419,10 +457,6 @@ class EventManager {
 					this.shift = true;
 			}
 
-			if (this.control) {
-				AnimationManager.scaleMain(0.99);
-			}
-
 			if (!ApiManager.isConnected()) {
 				if (this.control) {
 					switch (e.code) {
@@ -438,6 +472,10 @@ class EventManager {
 				}
 
 				return;
+			}
+
+			if (this.control) {
+				AnimationManager.fade(true);
 			}
 
 			if (!SearchManager.isActive()) {
@@ -488,60 +526,64 @@ class EventManager {
 						PopupManager.showPopup("End");
 						AudioManager.toEnd();
 				}
-			}
-
-			if (this.control) {
-				switch (e.code) {
-					case "BracketRight":
-						AudioManager.changeVolume(true);
-						return;
-					case "Slash":
-						AudioManager.changeVolume(false);
-						return;
-					case "KeyA":
-						if (
-							!SearchManager.isActive() || !SearchManager.isSearchSelected()
-						) {
+				if (this.control) {
+					switch (e.code) {
+						case "BracketRight":
+							AudioManager.changeVolume(true);
+							return;
+						case "Slash":
+							AudioManager.changeVolume(false);
+							return;
+						case "KeyA":
+							if (
+								!SearchManager.isActive() || !SearchManager.isSearchSelected()
+							) {
+								e.preventDefault();
+								AnimationManager.toggleAnimations();
+							}
+							return;
+						case "KeyM":
 							e.preventDefault();
-							AnimationManager.toggleAnimations();
-						}
-						return;
-					case "KeyM":
-						e.preventDefault();
-						SeekbarManager.addMarker();
-						return;
-					case "KeyC":
-						e.preventDefault();
-						SeekbarManager.clearMarker();
-						return;
-					case "KeyO":
-						e.preventDefault();
-						SongManager.toggleSortByModifiedDate();
-						return;
-					case "KeyP":
-						e.preventDefault();
-						PlayModeManager.rotatePlayMode();
-						return;
-					case "KeyE":
-						e.preventDefault();
-						ApiManager.rotateEndpoint();
-						return;
-					case "KeyR":
-						e.preventDefault();
-						ApiManager.reloadSongs();
-						return;
-					case "KeyH":
-						e.preventDefault();
-						ThemeManager.rotateTheme();
-						return;
-				}
+							SeekbarManager.addMarker();
+							return;
+						case "KeyC":
+							e.preventDefault();
+							SeekbarManager.clearMarker();
+							return;
+						case "KeyO":
+							e.preventDefault();
+							SongManager.toggleSortByModifiedDate();
+							return;
+						case "KeyP":
+							e.preventDefault();
+							PlayModeManager.rotatePlayMode();
+							return;
+						case "KeyE":
+							e.preventDefault();
+							ApiManager.rotateEndpoint();
+							return;
+						case "KeyR":
+							e.preventDefault();
+							ApiManager.reloadSongs();
+							return;
+						case "KeyH":
+							e.preventDefault();
+							ThemeManager.rotateTheme();
+							return;
+					}
 
-				return;
+					return;
+				}
 			}
+
+			const eligibleToOpenSearch = (e.keyCode >= 48 && e.keyCode <= 90) || e.keyCode == 226;
+			if (eligibleToOpenSearch) AudioManager.playTypingAudio();
+
+			// Enter should not select the search input and instead select the current search result
+			if (e.code != "Enter")
+				SearchManager.selectSearchInput();
 
 			if (SearchManager.isActive()) {
-				AudioManager.playTypingAudio();
-
 				switch (e.code) {
 					case "ArrowUp":
 						e.preventDefault();
@@ -552,22 +594,27 @@ class EventManager {
 						SearchManager.selectNext();
 						return;
 					case "Enter":
-						SearchManager.playCurrentResultItem();
+						if (SearchManager.isActionInputMode())
+							SearchManager.exitActionInputModeAndToggle();
+						else
+							SearchManager.selectCurrentResultItem();
+
 						return;
 					case "Escape":
-						SearchManager.toggle();
+						if (SearchManager.isActionInputMode())
+							SearchManager.exitActionInputMode();
+						else
+							SearchManager.toggle();
 						return;
 				}
 			} else {
-				if (e.keyCode >= 48 && e.keyCode <= 90) {
-					AudioManager.playTypingAudio();
+				if (eligibleToOpenSearch) {
 					SearchManager.toggle();
 					SearchManager.searchInput.value = e.key;
 					SearchManager.updateSearch();
 				}
 			}
 
-			SearchManager.searchInput.focus();
 		};
 
 		document.onkeyup = (e) => {
@@ -575,8 +622,10 @@ class EventManager {
 			if (e.code == "ShiftLeft") this.shift = false;
 			if (e.code == "ControlLeft") this.control = false;
 
+			if (!ApiManager.isConnected()) return;
+
 			if (!this.control) {
-				AnimationManager.scaleMain(1);
+				AnimationManager.fade(false);
 			}
 		};
 
@@ -603,7 +652,6 @@ class ApiManager {
 
 		Song.setApi(`${this.getApi()}/songs`);
 	}
-
 
 	static setAuthorizationToken(token) {
 		let name = window.location.hostname;
@@ -639,7 +687,11 @@ class ApiManager {
 	static rotateEndpoint() {
 		this.currentEndpointIndex = (this.currentEndpointIndex + 1) % this.endpoints.length;
 
-		this.setEndpoint(this.endpoints[this.currentEndpointIndex]);
+		this.setAndSaveEndpoint(this.endpoints[this.currentEndpointIndex]);
+	}
+
+	static setAndSaveEndpoint(endpoint) {
+		this.setEndpoint(endpoint);
 		this.saveCurrentEndpoint();
 	}
 
@@ -1043,7 +1095,8 @@ class SongManager {
 	}
 
 	static playCurrentSongItem() {
-		this.playSongItem(this.currentSongItem);
+		if (this.currentSongItem)
+			this.playSongItem(this.currentSongItem);
 	}
 
 	static createSongItem(song) {
@@ -1156,10 +1209,6 @@ class AudioManager {
 		this.imagePaused = false;
 	}
 
-	static playTypingAudio() {
-
-	}
-
 	static playInteractionAudio(wait = 0) {
 		if (Date.now() - this.lastInteractionAudioPlay < wait) return;
 		this.lastInteractionAudioPlay = Date.now();
@@ -1168,11 +1217,11 @@ class AudioManager {
 	}
 
 	static playTypingAudio() {
-		this.playAudio(this.keys[Math.floor(Math.random() * this.keys.length)]);
+		this.playAudio(this.keys[Math.floor(Math.random() * this.keys.length)], 0.5);
 	}
 
-	static playAudio(audio) {
-		audio.volume = this.getVolume() / 100;
+	static playAudio(audio, volumeMultiplier = 1) {
+		audio.volume = (this.getVolume() / 100) * volumeMultiplier;
 		audio.currentTime = 0;
 		audio.play();
 	}
@@ -1275,6 +1324,54 @@ class AudioManager {
 	}
 }
 
+class ActionManager {
+	static initialize() {
+		this.actions = [
+			new Action("Play", () => AudioManager.play(), Action.ACTION, "Play the current song"),
+			new Action("Pause", () => AudioManager.pause(), Action.ACTION, "Pause the current song"),
+			new Action("Endpoint", (a) => ApiManager.setAndSaveEndpoint(a.value), Action.INPUT, () => ApiManager.getCurrentEndpoint()),
+			new Action("Animations", () => AnimationManager.toggleAnimations(), Action.TOGGLE, () => AnimationManager.isAnimationsEnabled() ? Action.TOGGLE_OFF : Action.TOGGLE_ON),
+			new Action("Auth", (a) => ApiManager.setAuthorizationToken(a.value), Action.INPUT, "Hidden"),
+			new Action("Theme", (a) => ThemeManager.setTheme(a.value), Action.INPUT, () => ThemeManager.getTheme()),
+		];
+
+		this.actionsByName = new Map();
+		this.actions.forEach((action) => this.actionsByName.set(action.name, action));
+	}
+
+	static queryActions(query) {
+		query = query.toLowerCase();
+
+		const actions = [];
+
+		this.actions.forEach((action) => {
+			if (action.name.toLowerCase().includes(query)) {
+				action.updateValue();
+				actions.push(action);
+			}
+		});
+
+		return actions;
+	}
+
+	static getAction(name) {
+		return this.actionsByName.get(name);
+	}
+
+	static updateActionInput(action, value) {
+		action.value = value;
+	}
+
+
+	save(action) {
+		localStorage.setItem(`action-${action.name}`, action.value);
+	}
+
+	restore(action) {
+		action.value = localStorage.getItem(`action-${action.name}`);
+	}
+}
+
 class SearchManager {
 	static initialize() {
 		this.searchInputIsSelected = false;
@@ -1284,16 +1381,22 @@ class SearchManager {
 		this.searchInput = $("#search-input", this.search);
 
 		this.results = $("#search-results");
-		this.resultItem = $("#search-result-template").content.firstElementChild;
+		this.songResultItem = $("#search-result-song-item-template").content.firstElementChild;
+		this.actionResultItem = $("#search-result-action-item-template").content.firstElementChild;
 		this.currentResultItem = null;
 
 		this.searchInput.onfocus = () => (this.searchInputIsSelected = true);
 		this.searchInput.onblur = () => (this.searchInputIsSelected = false);
 
+		this.actionInputMode = false
+
 		this.results.onclick = (e) => {
 			if (e.target == this.results) return;
 
-			this.playResult(e.target);
+			if (SearchManager.isActionInputMode())
+				SearchManager.exitActionInputModeAndToggle();
+			else
+				this.selectItem(e.target);
 		};
 
 		this.search.onclick = (e) => {
@@ -1304,7 +1407,41 @@ class SearchManager {
 		this.searchInput.addEventListener("input", this.updateSearch);
 	}
 
+	static enterActionInputMode(action) {
+		this.actionInputMode = true;
+		this.currentAction = action;
+		this.lastSearchInputValue = this.searchInput.value;
+
+		this.clearSearchInput();
+		this.selectSearchInput();
+
+		this.searchInput.value = action.value;
+	}
+
+	static exitActionInputModeAndToggle() {
+		SearchManager.toggle();
+	}
+
+	static exitActionInputMode() {
+		if (!this.isActionInputMode()) return;
+
+		this.currentAction.select();
+		this.actionInputMode = false;
+		this.currentAction = null;
+		this.searchInput.value = this.lastSearchInputValue;
+	}
+
+
+	static isActionInputMode() {
+		return this.actionInputMode;
+	}
+
 	static updateSearch() {
+		if (SearchManager.isActionInputMode()) {
+			ActionManager.updateActionInput(SearchManager.currentAction, SearchManager.searchInput.value);
+			SearchManager.updateCurrentActionResultItemValue();
+			return;
+		}
 		// prevent searching for empty string
 		if (SearchManager.searchInput.value.length == 0) {
 			clearTimeout(this.searchTimeout);
@@ -1312,27 +1449,65 @@ class SearchManager {
 			return;
 		}
 
-		clearTimeout(this.searchTimeout);
-		this.searchTimeout = setTimeout(() => {
-			SongManager.querySongs(SearchManager.searchInput.value).then((found) => {
-				SearchManager.clearResults();
+		if (SearchManager.searchInput.value.startsWith(">")) {
+			SearchManager.clearResults();
 
-				if (SongManager.isSortedByModifiedDate()) {
-					found = found.sort((a, b) => b.modified - a.modified);
-				}
-				found.forEach((song) => SearchManager.addResult(song));
+			ActionManager
+				.queryActions(SearchManager.searchInput.value.slice(1))
+				.forEach((action) => {
+					SearchManager.addActionResult(action);
+				});
 
-				SearchManager.selectNext();
-			});
-		}, 200);
+			SearchManager.selectNext();
+		} else {
+
+			clearTimeout(this.searchTimeout);
+			this.searchTimeout = setTimeout(() => {
+				SongManager.querySongs(SearchManager.searchInput.value).then((found) => {
+					SearchManager.clearResults();
+
+					if (SongManager.isSortedByModifiedDate()) {
+						found = found.sort((a, b) => b.modified - a.modified);
+					}
+					found.forEach((song) => SearchManager.addSongResult(song));
+
+					SearchManager.selectNext();
+				});
+			}, 200);
+		}
 	}
 
-	static playCurrentResultItem() {
-		this.playResult(this.currentResultItem);
+	static selectItem(item) {
+		if (item.classList.contains("action")) {
+			this.selectAction(item.name);
+			this.setActive(item);
+		} else
+			this.playResult(item);
+	}
+
+	static selectCurrentResultItem() {
+		this.selectItem(this.currentResultItem);
+	}
+
+	static updateCurrentActionResultItemValue() {
+		$(".search-result-action-value", this.currentResultItem).innerText = SearchManager.searchInput.value;
+	}
+
+	static selectAction(name) {
+		const action = ActionManager.getAction(name);
+
+		switch (action.type) {
+			case Action.INPUT:
+				this.enterActionInputMode(action);
+				break;
+			default:
+				action.select();
+				SearchManager.toggle();
+		}
 	}
 
 	static playResult(resultItem) {
-		// unset song from song list, otherwise we need to search for it
+		// Unset song from song list, otherwise we need to search for it.
 		SongManager.setActiveById(resultItem.id);
 		SongManager.playSongId(resultItem.id);
 		SearchManager.toggle();
@@ -1362,7 +1537,10 @@ class SearchManager {
 	static unselectSearchInput() {
 		this.searchInput.blur();
 	}
+
 	static selectNext() {
+		this.exitActionInputMode()
+
 		let next;
 		if (this.currentResultItem) {
 			next = this.currentResultItem.nextElementSibling;
@@ -1377,6 +1555,8 @@ class SearchManager {
 	}
 
 	static selectPrevious() {
+		this.exitActionInputMode()
+
 		let next;
 		if (this.currentResultItem) {
 			next = this.currentResultItem.previousElementSibling;
@@ -1389,9 +1569,19 @@ class SearchManager {
 
 		this.setActive(next);
 	}
+	static addActionResult(action) {
+		const resultItem = this.actionResultItem.cloneNode(true);
 
-	static addResult(song) {
-		const resultItem = this.resultItem.cloneNode(true);
+		resultItem.name = action.name;
+
+		$(".search-result-action-name", resultItem).innerText = action.name;
+		$(".search-result-action-value", resultItem).innerText = action.value;
+
+		this.results.appendChild(resultItem);
+	}
+
+	static addSongResult(song) {
+		const resultItem = this.songResultItem.cloneNode(true);
 
 		resultItem.id = song.id;
 
@@ -1418,10 +1608,11 @@ class SearchManager {
 	static toggle() {
 		if (this.visible) {
 			this.search.classList.remove("search-active");
+			this.exitActionInputMode()
 
 			// wait for animation to finish
 			setTimeout(() => {
-				SearchManager.searchInput.value = "";
+				this.clearSearchInput();
 				this.clearResults();
 			}, 100);
 		} else {
@@ -1430,12 +1621,17 @@ class SearchManager {
 
 		this.visible = !this.visible;
 	}
+
+	static clearSearchInput() {
+		this.searchInput.value = "";
+	}
 }
 
 class AnimationManager {
 	static initialize() {
 		this.main = $("#main");
-		this.animationsEnabled = localStorage.getItem("animationsEnabled") || true;
+		this.animationsEnabled = localStorage.getItem("animations") === "true";
+		if (this.animationsEnabled == null) this.animationsEnabled = true;
 		this.image = $("#image");
 		this.breathingAnimationInterval = null;
 
@@ -1493,8 +1689,15 @@ class AnimationManager {
 		if (this.animationsEnabled) this.start();
 	}
 
-	static scaleMain(scale) {
-		this.main.style.scale = scale;
+	static fade(fade) {
+		if (fade) {
+			this.main.style.scale = 0.99;
+			this.main.style.filter = "blur(5px) saturate(1.5)"
+		}
+		else {
+			this.main.style.scale = 1;
+			this.main.style.filter = "none"
+		}
 	}
 
 	static stop() {
@@ -1537,21 +1740,25 @@ class AnimationManager {
 		);
 	}
 
+	static isAnimationsEnabled() {
+		return this.animationsEnabled;
+	}
+
 	static toggleAnimations() {
-		if ((this.animationsEnabled = !this.animationsEnabled)) this.start();
+		if (this.animationsEnabled = !this.animationsEnabled) this.start();
 		else this.stop();
 
 		PopupManager.showPopup(
-			"Animations " + (this.animationsEnabled ? "enabled" : "disabled")
+			"Animations " + (this.isAnimationsEnabled() ? "enabled" : "disabled")
 		);
 
-		if (this.animationsEnabled) {
+		if (this.isAnimationsEnabled()) {
 			this.start();
 		} else {
 			this.stop();
 		}
 
-		localStorage.setItem("animationsEnabled", this.animationsEnabled);
+		localStorage.setItem("animations", this.isAnimationsEnabled());
 	}
 }
 
@@ -1565,6 +1772,7 @@ ApiManager.ping().then(() =>
 		SongManager,
 		AudioManager,
 		EventManager,
+		ActionManager,
 		PlayModeManager,
 		SearchManager,
 		AnimationManager,

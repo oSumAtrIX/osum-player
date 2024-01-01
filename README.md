@@ -99,6 +99,11 @@ Access the player from any device.
 
 > **Note**: You can use your mouse wheel on the seekbar or album cover to adjust the volume.
 
+## 🚀 Action launcher
+
+You can use the action launcher to quickly perform actions such as playing a song, or changing and toggling settings.
+The acton launcher can be opened anytime by typing `>` everywhere or in the quick search bar.
+
 ## 🚩 Marker
 
 To add a marker, press `CTRL+M`. The marker will appear on the seekbar which can be useful to highlight or mark favourite parts.
