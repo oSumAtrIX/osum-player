@@ -476,12 +476,13 @@ class EventManager {
 				return;
 			}
 
-			if (this.control) {
-				AnimationManager.fade(true);
-			}
 
 			if (!SearchManager.isActive()) {
 				e.preventDefault();
+
+				if (this.control) {
+					AnimationManager.scaleMain(true);
+				}
 
 				switch (e.code) {
 					case "ArrowLeft":
@@ -627,7 +628,7 @@ class EventManager {
 			if (!ApiManager.isConnected()) return;
 
 			if (!this.control) {
-				AnimationManager.fade(false);
+				AnimationManager.scaleMain(false);
 			}
 		};
 
@@ -1138,25 +1139,13 @@ class AudioManager {
 
 		this.setVolume(localStorage.getItem("volume") || 50);
 
-		// update image on audio events
-
-		// when a song is loaded, readyState is 0, so pause the image
-		// otherwise resume the image
 		this.songAudio.onplay = () => {
 			if (this.songAudio.readyState == 0) this.pauseImage();
 			else this.resumeImage();
 		};
-
-		// when a song is loaded, so resume the image,
-		// this is needed because when a song is loaded, readyState is 0 and
-		// the image is paused, so we need to resume it once the song is loaded
-		this.songAudio.addEventListener("loadedmetadata", () => this.resumeImage());
-
-		// when a song is paused, so pause the image
 		this.songAudio.onpause = () => this.pauseImage();
-
-		// when a song is ended, so pause the image
 		this.songAudio.onended = () => this.pauseImage();
+		this.songAudio.addEventListener("loadedmetadata", () => this.resumeImage());
 
 		// update seekbar on audio events
 
@@ -1258,8 +1247,12 @@ class AudioManager {
 		if (this.songAudio.src) {
 			this.songAudio.play();
 
+			// TODO: Properly scrobble by checking if the song has been actually played for 50% or 4 minutes
 			this.songAudio.ontimeupdate = () => {
 				if (this.songAudio.currentTime < 30) return;
+
+				// AudioManager.toEnd() should not trigger scrobble
+				if (this.songAudio.currentTime == this.getDuration()) return;
 
 				if (this.songAudio.currentTime >= this.songAudio.duration / 2 || this.songAudio.currentTime >= 4 * 60) {
 					LastFMManager.scrobble(SongManager.getCurrentSong());
@@ -1426,7 +1419,7 @@ class ActionManager {
 			new Action("Play", () => AudioManager.play(), Action.ACTION, "Play the current song"),
 			new Action("Pause", () => AudioManager.pause(), Action.ACTION, "Pause the current song"),
 			new Action("Endpoint", (a) => ApiManager.setAndSaveEndpoint(a.value), Action.INPUT, () => ApiManager.getCurrentEndpoint()),
-			new Action("Animations", () => AnimationManager.toggleAnimations(), Action.TOGGLE, () => AnimationManager.isAnimationsEnabled() ? Action.TOGGLE_OFF : Action.TOGGLE_ON),
+			new Action("Animations", () => AnimationManager.toggleAnimations(), Action.TOGGLE, () => AnimationManager.isAnimationsEnabled() ? Action.TOGGLE_ON : Action.TOGGLE_OFF),
 			new Action("Auth", (a) => ApiManager.setAuthorizationToken(a.value), Action.INPUT, Action.HIDDEN),
 			new Action("Theme", (a) => ThemeManager.setTheme(a.value), Action.INPUT, () => ThemeManager.getTheme()),
 			new Action("Last.FM (Input format: <key> <secret>)", (a) => {
@@ -1795,14 +1788,12 @@ class AnimationManager {
 		document.body.style.opacity = 0;
 	}
 
-	static fade(fade) {
+	static scaleMain(fade) {
 		if (fade) {
 			this.main.style.scale = 0.99;
-			this.main.style.filter = "blur(5px) saturate(1.5)"
 		}
 		else {
 			this.main.style.scale = 1;
-			this.main.style.filter = "none"
 		}
 	}
 
