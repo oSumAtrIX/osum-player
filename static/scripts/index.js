@@ -1138,25 +1138,13 @@ class AudioManager {
 
 		this.setVolume(localStorage.getItem("volume") || 50);
 
-		// update image on audio events
-
-		// when a song is loaded, readyState is 0, so pause the image
-		// otherwise resume the image
 		this.songAudio.onplay = () => {
 			if (this.songAudio.readyState == 0) this.pauseImage();
 			else this.resumeImage();
 		};
-
-		// when a song is loaded, so resume the image,
-		// this is needed because when a song is loaded, readyState is 0 and
-		// the image is paused, so we need to resume it once the song is loaded
-		this.songAudio.addEventListener("loadedmetadata", () => this.resumeImage());
-
-		// when a song is paused, so pause the image
 		this.songAudio.onpause = () => this.pauseImage();
-
-		// when a song is ended, so pause the image
 		this.songAudio.onended = () => this.pauseImage();
+		this.songAudio.addEventListener("loadedmetadata", () => this.resumeImage());
 
 		// update seekbar on audio events
 
@@ -1258,8 +1246,12 @@ class AudioManager {
 		if (this.songAudio.src) {
 			this.songAudio.play();
 
+			// TODO: Properly scrobble by checking if the song has been actually played for 50% or 4 minutes
 			this.songAudio.ontimeupdate = () => {
 				if (this.songAudio.currentTime < 30) return;
+
+				// AudioManager.toEnd() should not trigger scrobble
+				if (this.songAudio.currentTime == this.getDuration()) return;
 
 				if (this.songAudio.currentTime >= this.songAudio.duration / 2 || this.songAudio.currentTime >= 4 * 60) {
 					LastFMManager.scrobble(SongManager.getCurrentSong());
