@@ -1426,7 +1426,7 @@ class ActionManager {
 			new Action("Play", () => AudioManager.play(), Action.ACTION, "Play the current song"),
 			new Action("Pause", () => AudioManager.pause(), Action.ACTION, "Pause the current song"),
 			new Action("Endpoint", (a) => ApiManager.setAndSaveEndpoint(a.value), Action.INPUT, () => ApiManager.getCurrentEndpoint()),
-			new Action("Animations", () => AnimationManager.toggleAnimations(), Action.TOGGLE, () => AnimationManager.isAnimationsEnabled() ? Action.TOGGLE_OFF : Action.TOGGLE_ON),
+			new Action("Animations", () => AnimationManager.toggleAnimations(), Action.TOGGLE, () => AnimationManager.isAnimationsEnabled() ? Action.TOGGLE_ON : Action.TOGGLE_OFF),
 			new Action("Auth", (a) => ApiManager.setAuthorizationToken(a.value), Action.INPUT, Action.HIDDEN),
 			new Action("Theme", (a) => ThemeManager.setTheme(a.value), Action.INPUT, () => ThemeManager.getTheme()),
 			new Action("Last.FM (Input format: <key> <secret>)", (a) => {
