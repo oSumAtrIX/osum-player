@@ -476,12 +476,13 @@ class EventManager {
 				return;
 			}
 
-			if (this.control) {
-				AnimationManager.fade(true);
-			}
 
 			if (!SearchManager.isActive()) {
 				e.preventDefault();
+
+				if (this.control) {
+					AnimationManager.scaleMain(true);
+				}
 
 				switch (e.code) {
 					case "ArrowLeft":
@@ -627,7 +628,7 @@ class EventManager {
 			if (!ApiManager.isConnected()) return;
 
 			if (!this.control) {
-				AnimationManager.fade(false);
+				AnimationManager.scaleMain(false);
 			}
 		};
 
@@ -1787,14 +1788,12 @@ class AnimationManager {
 		document.body.style.opacity = 0;
 	}
 
-	static fade(fade) {
+	static scaleMain(fade) {
 		if (fade) {
 			this.main.style.scale = 0.99;
-			this.main.style.filter = "blur(5px) saturate(1.5)"
 		}
 		else {
 			this.main.style.scale = 1;
-			this.main.style.filter = "none"
 		}
 	}
 
