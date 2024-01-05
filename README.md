@@ -121,7 +121,7 @@ Play with the album cover.
 - [x] Marker
 - [x] Various play modes
 - [x] Rainbow seekbar (Rotate between themes)
-- [ ] Last.FM integration
+- [x] Last.FM integration
 - [ ] Keybinds menu
 - [ ] Playlists
 - [ ] Queues
