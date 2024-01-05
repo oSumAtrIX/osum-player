@@ -15,6 +15,7 @@ model Song {
     image    Boolean
     modified DateTime @default(now())
     marker   Marker[]
+    link     Link?
 }
 
 model Marker {
@@ -22,4 +23,12 @@ model Marker {
     songId Int
     marker Float
     song   Song  @relation(fields: [songId], references: [id], onDelete: Cascade)
+}
+
+model Link {
+    id      Int      @id @default(autoincrement())
+    token   String   @unique
+    expires DateTime
+    songId  Int      @unique
+    song    Song     @relation(fields: [songId], references: [id], onDelete: Cascade)
 }

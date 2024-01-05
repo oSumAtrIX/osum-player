@@ -123,10 +123,10 @@ Play with the album cover.
 - [x] Various play modes
 - [x] Rainbow seekbar (Rotate between themes)
 - [x] Last.FM integration
+- [x] Share songs
 - [ ] Keybinds menu
 - [ ] Playlists
 - [ ] Queues
 - [ ] Sync live changes
 - [ ] Global hotkeys
 - [ ] Add new audio files with drag & drop
-- [ ] Share links

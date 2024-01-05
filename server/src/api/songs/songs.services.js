@@ -102,6 +102,84 @@ export async function getSongFile(id) {
 }
 
 /**
+ * Create a link to a song.
+ * @param {number} id The id of the song to create a link to.
+ * @param {number} expires The time the link expires.
+ * @returns The token of the link.
+ */
+export async function createSongLink(id, expires = Date.now() + 3600000) {
+	expires = new Date(expires);
+
+	const token = sha1(
+		Math.random().toString(36).substring(2) +
+		Math.random().toString(36).substring(2)
+	).substring(0, 8);
+
+	await db.link.upsert({
+		where: {
+			songId: id,
+		},
+		create: {
+			token,
+			expires,
+			song: {
+				connect: {
+					id,
+				},
+			},
+		},
+		update: {
+			token,
+			expires,
+		},
+	});
+
+	return token;
+}
+
+/*
+ * Get a song given a token.
+ * @param {string} token The token of the link.
+ * @returns The song or null if the link is invalid.
+ */
+export async function getSongFromToken(token) {
+	const link = await db.link.findUnique({
+		where: { token },
+		select: { song: true, expires: true },
+	});
+
+	if (link === null) return null;
+
+	if (link.expires < Date.now()) {
+		await db.link.delete({ where: { id: link.id } });
+		return null;
+	}
+
+	return link.song;
+}
+
+/**
+ * Get the id of a song given a token.
+ * @param {string} token The token of the link.
+ * @returns The id of the song or null if the link is invalid.
+ */
+export async function getSongIdFromToken(token) {
+	const link = await db.link.findUnique({
+		where: { token },
+		select: { songId: true, expires: true },
+	});
+
+	if (link === null) return null;
+
+	if (link.expires < Date.now()) {
+		await db.link.delete({ where: { id: link.id } });
+		return null;
+	}
+
+	return link.songId;
+}
+
+/**
  * Get the path to an image given a filename.
  *
  * @param {string} filename The filename of the song.
@@ -115,7 +193,7 @@ function getImagePath(filename, full = false) {
 
 export async function getSongImage(id, full = false) {
 	const song = await findSong(id, {
-		filename: true,
+		filename: true
 	});
 
 	if (song === null) return null;
