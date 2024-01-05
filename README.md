@@ -93,10 +93,13 @@ Access the player from any device.
 | `Enter`      | Start the currently selected song or search result                                              |
 | `ArrowLeft`  | Scrub backward (Hold `SHIFT` for fine and `CTRL` for rough scrubbing) or play the previous song |
 | `ArrowRight` | Scrub forward (Hold `SHIFT` for fine and `CTRL` for rough scrubbing)                            |
-| `ArrowUp`    | Play the previous song or select the previous search result                                     |
+| `ArrowUp`    | Select the previous song or the previous search result                                          |
 | `ArrowDown`  | Play the next song or select the next search result                                             |
 | `Home`       | Skip to the beginning of the current song                                                       |
 | `End`        | Skip to the end of the current song                                                             |
+| `PageUp`     | Play the previous song                                                                          |
+| `PageDown`   | Play the next song                                                                              |
+| `0-9`        | Seek to the corresponding time of the song                                                      |
 
 > **Note**: You can use your mouse wheel on the seekbar or album cover to adjust the volume.
 

@@ -528,7 +528,23 @@ class EventManager {
 					case "End":
 						PopupManager.showPopup("End");
 						AudioManager.toEnd();
+						return;
+					case "PageDown":
+						PopupManager.showPopup("Next");
+						SongManager.next();
+						return;
+					case "PageUp":
+						PopupManager.showPopup("Previous");
+						SongManager.playPreviousSong();
+						return;
+					default:
+						if (e.key >= 0 && e.key <= 9) {
+							const index = e.key == 0 ? 10 : (e.key - 1);
+							AudioManager.setProgress(index / 10);
+							return;
+						}
 				}
+
 				if (this.control) {
 					switch (e.code) {
 						case "BracketRight":
@@ -893,6 +909,22 @@ class SongManager {
 		this.getNewSongs()
 	}
 
+	static async next() {
+		switch (PlayModeManager.getCurrentPlayMode()) {
+			case PlayModeManager.AUTOPLAY:
+				SongManager.selectNextAndPlay();
+				break;
+			case PlayModeManager.SHUFFLE:
+				const song = await ApiManager.getRandomSong();
+				SongManager.add(song);
+				SongManager.playSongAndSetActive(song);
+				break;
+			case PlayModeManager.REPEAT:
+				this.play();
+				break;
+		}
+	}
+
 	static isSortedByModifiedDate() {
 		return this.sortByModifiedDate;
 	}
@@ -1144,7 +1176,10 @@ class AudioManager {
 			else this.resumeImage();
 		};
 		this.songAudio.onpause = () => this.pauseImage();
-		this.songAudio.onended = () => this.pauseImage();
+		this.songAudio.onended = async () => {
+			this.pauseImage();
+			await SongManager.next();
+		}
 		this.songAudio.addEventListener("loadedmetadata", () => this.resumeImage());
 
 		// update seekbar on audio events
@@ -1160,34 +1195,18 @@ class AudioManager {
 		};
 		requestAnimationFrame(updateSeekbar);
 
-		this.songAudio.onended = async () => {
-			switch (PlayModeManager.getCurrentPlayMode()) {
-				case PlayModeManager.AUTOPLAY:
-					SongManager.selectNextAndPlay();
-					break;
-				case PlayModeManager.SHUFFLE:
-					const song = await ApiManager.getRandomSong();
-					SongManager.add(song);
-					SongManager.playSongAndSetActive(song);
-					break;
-				case PlayModeManager.REPEAT:
-					this.play();
-					break;
-			}
-		};
-
 		const changeVolume = (e) => AudioManager.changeVolume(e.deltaY < 0);
 
 		SeekbarManager.getSeekbar().onwheel = changeVolume;
 		SongManager.getImage().onwheel = changeVolume;
 	}
 
-	static toEnd() {
-		this.setProgress(this.getDuration());
-	}
-
 	static toStart() {
 		this.setProgress(0);
+	}
+
+	static toEnd() {
+		this.setProgress(1);
 	}
 
 	static pauseImage() {
