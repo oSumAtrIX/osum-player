@@ -1,13 +1,19 @@
 const $ = (selector, target) => (target || document).querySelector(selector);
 
+const token = (() => {
+	const t = new URLSearchParams(window.location.search).get("token");
+	if (t) return `?token=${t}`;
+	return "";
+})()
+
 class Song {
 	constructor(title, artist, image, modified, id) {
 		const api = `${Song.api}/${id}`;
 
 		this.title = title;
 		this.artist = artist;
-		this.image = image ? `${api}/image` : "assets/placeholder.png";
-		this.file = `${api}/file`;
+		this.image = image ? `${api}/image` + token : "assets/placeholder.png";
+		this.file = `${api}/file${token}`;
 		this.modified = new Date(modified);
 		this.marker = undefined;
 		this.id = id;
@@ -82,7 +88,7 @@ class Song {
 	}
 
 	getFullImage() {
-		return this.image + "?full";
+		return this.image + (token ? "&full" : "?full");
 	}
 
 	static fromJSON(json) {
@@ -476,7 +482,6 @@ class EventManager {
 				return;
 			}
 
-
 			if (!SearchManager.isActive()) {
 				e.preventDefault();
 
@@ -553,7 +558,7 @@ class EventManager {
 							e.preventDefault();
 							SeekbarManager.clearMarker();
 							return;
-						case "KeyO":
+						case "KeyS":
 							e.preventDefault();
 							SongManager.toggleSortByModifiedDate();
 							return;
@@ -746,7 +751,7 @@ class ApiManager {
 	}
 
 	static async getMarker(id) {
-		return await this.request(`/songs/${id}/marker`);
+		return await this.request(`/songs/${id}/marker${token}`);
 	}
 
 	static async getRandomSong() {
@@ -772,6 +777,11 @@ class ApiManager {
 		return Song.fromJSON(json);
 	}
 
+	static async getSongByLinkToken() {
+		const json = await this.request(`/songs/link${token}`);
+		return Song.fromJSON(json);
+	}
+
 	static async getSongIds(offset, sortByModifiedDate) {
 		const ids = [];
 
@@ -782,6 +792,10 @@ class ApiManager {
 		response.forEach((song) => ids.push(song.id));
 
 		return ids;
+	}
+
+	static async createSongLink(id) {
+		return await this.request(`/songs/${id}/link`);
 	}
 
 	static async editSongMarker(id, marker) {
@@ -865,14 +879,31 @@ class SongManager {
 		this.sortByModifiedDate =
 			localStorage.getItem("sortByModifiedDate") || true;
 
+		this.image.onclick = () => {
+			AudioManager.toggle();
+		};
+
 		// handle song playback
 		this.songList.onclick = (e) => {
-			if (e.target.classList.contains("song-item")) {
-				this.setActive(e.target);
-				this.playSongItem(e.target);
-				this.scrollToCurrentSongItem();
-			}
+			if (!e.target.classList.contains("song-item")) return;
+
+			this.setActive(e.target);
+			this.playSongItem(e.target);
+			this.scrollToCurrentSongItem();
 		};
+
+		// Further functions are not available when using a link token.
+		if (token) {
+			this.getSongByLinkToken()
+
+			return;
+		}
+
+		this.songList.oncontextmenu = (e) => {
+			if (!e.target.classList.contains("song-item")) return;
+
+			this.copySongLink(e.target.id);
+		}
 
 		this.songList.onscroll = (e) => {
 			clearTimeout(this.scrollTimeout);
@@ -886,11 +917,17 @@ class SongManager {
 			}, 5);
 		};
 
-		this.image.onclick = () => {
-			AudioManager.toggle();
-		};
-
 		this.getNewSongs()
+	}
+
+	static async copySongLink(id) {
+		await ApiManager.createSongLink(id).then((link) => {
+			const searchParams = new URLSearchParams(window.location.search);
+			searchParams.set("token", link.token);
+
+			navigator.clipboard.writeText(window.location.origin + window.location.pathname + "?" + searchParams.toString());
+			PopupManager.showPopup("Copied");
+		});
 	}
 
 	static isSortedByModifiedDate() {
@@ -954,6 +991,12 @@ class SongManager {
 
 		this.songs.set(song.id, song);
 		this.addSongToList(song);
+	}
+
+	static async getSongByLinkToken() {
+		const song = await ApiManager.getSongByLinkToken();
+		this.add(song);
+		return song;
 	}
 
 	static async getNewSongs() {
@@ -1025,8 +1068,12 @@ class SongManager {
 
 	}
 
+	static getSongById(id) {
+		return this.songs.get(parseInt(id));
+	}
+
 	static playSongId(id) {
-		const song = this.songs.get(parseInt(id));
+		const song = this.getSongById(id);
 
 		this.playSong(song);
 	}
@@ -1407,6 +1454,7 @@ class LastFMManager {
 	}
 
 	static warnNotAuthed() {
+		if (token) return;
 		if (this.showedWarning) return;
 		PopupManager.showPopup("Last.FM not authenticated", 2000);
 		this.showedWarning = true;
@@ -1496,6 +1544,12 @@ class SearchManager {
 			if (e.target != this.search && e.target != this.searchContainer) return;
 			SearchManager.toggle();
 		};
+
+		this.results.oncontextmenu = (e) => {
+			if (!e.target.id) return;
+
+			SongManager.copySongLink(e.target.id);
+		}
 
 		this.searchInput.addEventListener("input", this.updateSearch);
 	}
