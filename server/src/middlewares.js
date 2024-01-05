@@ -13,14 +13,3 @@ export function handleError(err, _req, res, _next) {
 		stack: err.stack,
 	});
 }
-
-export function checkAuthorization(req, res, next) {
-	if (req.method === "OPTIONS")
-		return next();
-
-	if (!config.AUTH_TOKEN || req.cookies.authorization === config.AUTH_TOKEN)
-		return next();
-
-	res.status(401);
-	res.end();
-}

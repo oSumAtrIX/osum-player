@@ -13,8 +13,10 @@ import {
 	clearMarker,
 	addMarker,
 	findSongRandom,
+	createSongLink,
+	getSongFromToken,
 } from "./songs.services.js";
-import { getSong, getId, checkDemoMode } from "./middlewares.js";
+import { getSong, getId, isReadOnly, checkAuth, checkToken } from "./middlewares.js";
 
 const router = Router();
 
@@ -26,7 +28,7 @@ const defaultSongColumnsSelection = {
 	modified: true,
 };
 
-router.get("/", async (req, res, next) => {
+router.get("/", checkAuth, async (req, res, next) => {
 	if (req.query.hasOwnProperty("q")) {
 		return res.json(
 			await findSongIdsByQuery(
@@ -39,7 +41,7 @@ router.get("/", async (req, res, next) => {
 	next();
 });
 
-router.patch("/", checkDemoMode, async (req, res, _next) => {
+router.patch("/", checkAuth, isReadOnly, async (req, res) => {
 	if (req.query.hasOwnProperty("watch")) {
 		watch();
 		res.json({ message: "Watching for changes" });
@@ -49,7 +51,7 @@ router.patch("/", checkDemoMode, async (req, res, _next) => {
 	}
 });
 
-router.post("/reload", checkDemoMode, async (req, res, next) => {
+router.post("/reload", checkAuth, isReadOnly, async (req, res, next) => {
 	const start = Date.now();
 
 	const full = req.query.hasOwnProperty("full");
@@ -63,7 +65,7 @@ router.post("/reload", checkDemoMode, async (req, res, next) => {
 	res.json(`Reloaded songs in ${end - start}ms`);
 });
 
-router.patch("/:id/marker", checkDemoMode, getId, async (req, res, next) => {
+router.patch("/:id/marker", checkAuth, isReadOnly, getId, async (req, res, next) => {
 	if (!req.body.marker) return next(new Error("Invalid body"));
 	if (req.body.marker === "clear") {
 		try {
@@ -88,7 +90,13 @@ router.patch("/:id/marker", checkDemoMode, getId, async (req, res, next) => {
 	res.json({ message: "Added marker" });
 });
 
-router.get("/offset/:offset", async (req, res, next) => {
+router.get("/:id/marker", getId, checkToken, checkAuth, async (req, res) => {
+	const marker = await getMarker(req.id);
+
+	res.json(marker);
+});
+
+router.get("/offset/:offset", checkAuth, async (req, res, next) => {
 	const offset = parseInt(req.params.offset);
 
 	if (isNaN(offset)) return next(new Error("Invalid offset"));
@@ -109,12 +117,12 @@ router.get("/offset/:offset", async (req, res, next) => {
 	res.json(songs);
 });
 
-router.get("/random", async (_req, res, _next) => {
+router.get("/random", checkAuth, async (_req, res) => {
 	const song = await findSongRandom(defaultSongColumnsSelection);
 	res.json(song);
 });
 
-router.get("/:id/file", getId, async (req, res, next) => {
+router.get("/:id/file", getId, checkToken, checkAuth, async (req, res, next) => {
 	let filename = null;
 	try {
 		filename = await getSongFile(req.id);
@@ -132,7 +140,25 @@ router.get("/:id/file", getId, async (req, res, next) => {
 	res.sendFile(filename);
 });
 
-router.get("/:id/image", getId, async (req, res, next) => {
+router.get("/:id/link", checkAuth, getId, async (req, res) => {
+	const token = await createSongLink(req.id);
+
+	res.json({ token });
+});
+
+router.get("/link", async (req, res) => {
+	const song = await getSongFromToken(req.query.token);
+
+	if (song === null) {
+		res.status(404);
+		res.end();
+		return;
+	}
+
+	res.json(song);
+});
+
+router.get("/:id/image", getId, checkToken, checkAuth, async (req, res, next) => {
 	const full = req.query.hasOwnProperty("full");
 
 	let image;
@@ -148,12 +174,12 @@ router.get("/:id/image", getId, async (req, res, next) => {
 		return;
 	}
 
-	res.setHeader("Cache-control", "public, max-age=3600");
+	res.setHeader("Cache-control", "public, max-age=31536000");
 	res.setHeader("Content-Type", "image");
 	res.end(image);
 });
 
-router.post("/multiple", async (req, res, next) => {
+router.post("/multiple", checkAuth, async (req, res, next) => {
 	if (!req.body.ids) return next(new Error("Invalid body"));
 	if (req.query.ids == "") return res.json([]);
 
@@ -161,13 +187,8 @@ router.post("/multiple", async (req, res, next) => {
 	res.json(songs);
 });
 
-router.get("/:id/marker", getId, async (req, res, next) => {
-	const marker = await getMarker(req.id);
 
-	res.json(marker);
-});
-
-router.get("/:id", getId, getSong, async (req, res, next) => {
+router.get("/:id", getId, checkToken, checkAuth, getSong, async (req, res) => {
 	const song = req.song;
 
 	if (song == null) {
@@ -179,7 +200,7 @@ router.get("/:id", getId, getSong, async (req, res, next) => {
 	res.json(song);
 });
 
-router.get("/changes", async (req, res, _next) => {
+router.get("/changes", checkAuth, async (_, res) => {
 	// TODO: Get changes such as when songs are deleted or added to reflect to the client. Use request query to determine if the changes should be flushed.
 	// WebSocket is probably the best way to do this.
 

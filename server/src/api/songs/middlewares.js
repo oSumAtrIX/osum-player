@@ -1,8 +1,14 @@
 import { findSong } from "./songs.services.js";
 import config from "../../config.js";
+import {
+	getSongIdFromToken
+} from "./songs.services.js";
 
-export function checkDemoMode(_req, res, next) {
-	if (config.DEMO_MODE) return res.json({ message: "This API is not available in demo mode" });
+export function isReadOnly(_req, res, next) {
+	if (config.READ_ONLY) {
+		res.status(403);
+		return res.json({ message: "Not allowed in read-only mode" });
+	}
 
 	next();
 }
@@ -27,6 +33,30 @@ export async function getSong(req, _res, next) {
 	} catch (err) {
 		return next(err);
 	}
+
+	next();
+}
+
+export function checkAuth(req, res, next) {
+	if (req.bypassAuth)
+		return next();
+
+	if (req.method === "OPTIONS")
+		return next();
+
+	if (!config.AUTH_TOKEN || req.cookies.authorization === config.AUTH_TOKEN)
+		return next();
+
+	res.status(401);
+	res.end();
+}
+
+export async function checkToken(req, _, next) {
+	if (!req.query.token)
+		return next();
+
+	if (await getSongIdFromToken(req.query.token) === req.id)
+		req.bypassAuth = true;
 
 	next();
 }
