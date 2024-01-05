@@ -553,7 +553,7 @@ class EventManager {
 							e.preventDefault();
 							SeekbarManager.clearMarker();
 							return;
-						case "KeyO":
+						case "KeyS":
 							e.preventDefault();
 							SongManager.toggleSortByModifiedDate();
 							return;

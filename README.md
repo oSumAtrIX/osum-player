@@ -82,6 +82,7 @@ Access the player from any device.
 | `CTRL+C`     | Clear all markers                                                                               |
 | `CTRL+A`     | Toggle animations                                                                               |
 | `CTRL+E`     | Rotate between endpoints                                                                        |
+| `CTRL+S`     | Sort by modified date or added                                                                  |
 | `CTRL+Plus`  | Increase volume                                                                                 |
 | `CTRL+Minus` | Decrease volume                                                                                 |
 | `CTRL+R`     | Quick reload songs to update the database                                                       |
