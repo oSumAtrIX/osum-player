@@ -1176,7 +1176,7 @@ class AudioManager {
 		this.songAudio.onpause = () => this.pauseImage();
 		this.songAudio.onended = async () => {
 			this.pauseImage();
-			LastFMManager.resetLastScrobble();
+			LastFMManager.resetLast();
 			await SongManager.next();
 		}
 		this.songAudio.addEventListener("loadedmetadata", () => this.resumeImage());
@@ -1412,12 +1412,16 @@ class LastFMManager {
 	static updateNowPlaying(song) {
 		if (!this.authed) return this.warnNotAuthed();
 
+		if (this.lastPlaying == song) return;
+		this.lastPlaying = song;
+
 		this.lastfm.track.updateNowPlaying({ artist: song.artist, track: song.title }, this.session);
 		this.timestamp = Math.floor(Date.now() / 1000);
 	}
 
-	static resetLastScrobble() {
+	static resetLast() {
 		this.lastScrobble = null;
+		this.lastPlaying = null;
 	}
 
 	static scrobble(song) {
