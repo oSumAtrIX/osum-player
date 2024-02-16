@@ -920,7 +920,7 @@ class SongManager {
 				SongManager.playSongAndSetActive(song);
 				break;
 			case PlayModeManager.REPEAT:
-				this.play();
+				SongManager.playSong(SongManager.getCurrentSong());
 				break;
 		}
 	}
