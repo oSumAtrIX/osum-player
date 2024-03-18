@@ -920,7 +920,7 @@ class SongManager {
 				SongManager.playSongAndSetActive(song);
 				break;
 			case PlayModeManager.REPEAT:
-				this.play();
+				SongManager.playSong(SongManager.getCurrentSong());
 				break;
 		}
 	}
@@ -1050,8 +1050,6 @@ class SongManager {
 		SeekbarManager.toString();
 		SeekbarManager.showSeekbar();
 
-		LastFMManager.updateNowPlaying(this.currentSong);
-
 		document.title = `${song.artist} - ${song.title}`;
 		$("link[rel='icon']").href = song.image;
 
@@ -1178,6 +1176,7 @@ class AudioManager {
 		this.songAudio.onpause = () => this.pauseImage();
 		this.songAudio.onended = async () => {
 			this.pauseImage();
+			LastFMManager.resetLast();
 			await SongManager.next();
 		}
 		this.songAudio.addEventListener("loadedmetadata", () => this.resumeImage());
@@ -1265,6 +1264,7 @@ class AudioManager {
 	static play() {
 		if (this.songAudio.src) {
 			this.songAudio.play();
+			LastFMManager.updateNowPlaying(SongManager.getCurrentSong());
 
 			// TODO: Properly scrobble by checking if the song has been actually played for 50% or 4 minutes
 			this.songAudio.ontimeupdate = () => {
@@ -1412,8 +1412,16 @@ class LastFMManager {
 	static updateNowPlaying(song) {
 		if (!this.authed) return this.warnNotAuthed();
 
+		if (this.lastPlaying == song) return;
+		this.lastPlaying = song;
+
 		this.lastfm.track.updateNowPlaying({ artist: song.artist, track: song.title }, this.session);
 		this.timestamp = Math.floor(Date.now() / 1000);
+	}
+
+	static resetLast() {
+		this.lastScrobble = null;
+		this.lastPlaying = null;
 	}
 
 	static scrobble(song) {
